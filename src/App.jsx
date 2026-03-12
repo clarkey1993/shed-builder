@@ -64,10 +64,10 @@ function App() {
                 <StudioFloor hideForBackground={!!imageUrl} />
                 <ContactShadows
                   position={[0, -0.01, 0]}
-                  opacity={0.25}
-                  scale={25}
-                  blur={3}
-                  far={8}
+                  opacity={0.3}
+                  scale={40}
+                  blur={4}
+                  far={10}
                   color="#1a1a1a"
                 />
                 {imageUrl && <Background imageUrl={imageUrl} />}
