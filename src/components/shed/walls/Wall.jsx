@@ -4,15 +4,13 @@ import * as THREE from "three";
 import { useConfigurator } from "../../../context/ConfiguratorContext";
 import { useBuilder } from "../../../context/BuilderContext";
 import { useShedTexturesContext } from "../../../context/ShedTextureContext";
-import shedData from "../../../shedData.json";
+import { getWindowDimensions, getDoorDimensions } from "../../../systems/framing/getOpeningDimensions";
 import DoorFrame from "../doors/DoorFrame";
 import Window from "../windows/Window";
 import WallGrid from "../grid/WallGrid";
 import Shiplap from "../cladding/Shiplap";
 import WallFraming from "../framing/WallFraming";
 
-const W = 22;
-const WINDOW_HEIGHT = 36;
 const TRIM_COLOR = "#c49a6c";
 
 const Wall = ({
@@ -28,11 +26,14 @@ const Wall = ({
 }) => {
   const wallGroupRef = useRef();
   const dragPlaneRef = useRef();
-  const { shedConfig, setWindowPosition, windowTypes = {} } = useConfigurator();
+  const { shedConfig, setWindowPosition, windowTypes = {}, wallHeightType } = useConfigurator();
   const { selectedElementId, showFraming, debugShowDragPlanes } = useBuilder();
   const { woodFraming } = useShedTexturesContext();
 
-  const doorHalfWidth = (hasDoor && doorType !== "none" && shedData.door_widths[doorType]?.standard / 2) || 0;
+  const doorDims = hasDoor && doorType !== "none"
+    ? getDoorDimensions({ doorType, wallHeightType: wallHeightType || "standard", wallHeight: height })
+    : null;
+  const doorHalfWidth = doorDims ? doorDims.width / 2 : 0;
   const plateThickness = shedConfig.framing.upright_middles_thickness_x;
   const trimMat = woodFraming ? (
     <meshStandardMaterial map={woodFraming} roughness={0.7} metalness={0} color={TRIM_COLOR} />
@@ -43,14 +44,17 @@ const Wall = ({
   const showWallGrid = selectedElementId !== null && selectedElementId.startsWith(`window-${wallId}-`);
 
   const windowsForFraming = useMemo(
-    () => windowPositions.map((x) => ({ x, width: W, height: WINDOW_HEIGHT })),
-    [windowPositions]
+    () => windowPositions.map((x, i) => {
+      const type = (windowTypes[wallId] || [])[i] || "STANDARD";
+      const dims = getWindowDimensions(type);
+      return { x, width: dims.width, height: dims.height };
+    }),
+    [windowPositions, windowTypes, wallId]
   );
   const doorsForFraming = useMemo(() => {
-    if (!hasDoor || doorType === "none") return [];
-    const w = shedData.door_widths[doorType]?.standard || 31;
-    return [{ x: 0, width: w, height: 6 * 12 }];
-  }, [hasDoor, doorType]);
+    if (!doorDims) return [];
+    return [{ x: 0, width: doorDims.width, height: doorDims.height }];
+  }, [doorDims]);
 
   return (
     <group ref={wallGroupRef} position={position} rotation={rotation}>
@@ -77,9 +81,10 @@ const Wall = ({
       <Shiplap
         width={width}
         height={height}
-        windowPositions={windowPositions}
+        windowOpenings={windowsForFraming}
         hasDoor={hasDoor && doorType !== "none"}
         doorHalfWidth={doorHalfWidth}
+        doorHeight={doorDims?.height}
         claddingOpacity={claddingOpacity}
       />
 
@@ -110,7 +115,10 @@ const Wall = ({
           wallGroupRef={wallGroupRef}
           trimMat={trimMat}
           windowType={(windowTypes[wallId] || [])[i] || "STANDARD"}
-          otherWindowPositions={windowPositions.filter((_, j) => j !== i)}
+          otherWindows={windowPositions.map((ox, j) => {
+            const type = (windowTypes[wallId] || [])[j] || "STANDARD";
+            return { x: ox, ...getWindowDimensions(type) };
+          }).filter((_, j) => j !== i)}
         />
       ))}
     </group>

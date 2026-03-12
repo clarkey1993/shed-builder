@@ -8,8 +8,6 @@ import * as THREE from "three";
 import { RoundedBoxGeometry } from "@react-three/drei";
 import { useShedTexturesContext } from "../../../context/ShedTextureContext";
 
-const W = 22;
-const WINDOW_HEIGHT = 36;
 const BOARD_HEIGHT = 5;
 const VISIBLE_COVERAGE = 4;
 const BOARD_THICKNESS = 0.6;
@@ -21,19 +19,20 @@ const COLOR_VARIATION = 0.05;
 const Shiplap = ({
   width,
   height,
-  windowPositions = [],
+  windowOpenings = [],
   hasDoor,
   doorHalfWidth,
+  doorHeight,
   claddingOpacity = 1,
 }) => {
   const claddingRef = useRef();
   const { woodCladding, woodCladdingBump } = useShedTexturesContext();
   const plateThickness = 1.5;
   const studHeight = height - plateThickness * 2;
+  const doorH = doorHeight ?? 6 * 12;
 
-  const doorTop = -height / 2 + 6 * 12;
+  const doorTop = -height / 2 + doorH;
   const doorBottom = -height / 2;
-  const winHalfH = WINDOW_HEIGHT / 2 + 2;
 
   const flatCladdingInstances = useMemo(() => {
     const rows = [];
@@ -52,8 +51,9 @@ const Shiplap = ({
       if (doorHalfWidth > 0 && y >= doorBottom && y <= doorTop) {
         cut(-doorHalfWidth - 2, doorHalfWidth + 2);
       }
-      windowPositions.forEach((wx) => {
-        if (y >= -winHalfH && y <= winHalfH) cut(wx - W / 2 - 3, wx + W / 2 + 3);
+      windowOpenings.forEach(({ x: wx, width: ww, height: wh }) => {
+        const winHalfH = wh / 2 + 2;
+        if (y >= -winHalfH && y <= winHalfH) cut(wx - ww / 2 - 3, wx + ww / 2 + 3);
       });
       const segments = segs
         .filter((s) => s.end - s.start > 1)
@@ -72,7 +72,7 @@ const Shiplap = ({
       });
     });
     return list;
-  }, [studHeight, width, doorHalfWidth, doorTop, doorBottom, windowPositions]);
+  }, [studHeight, width, doorHalfWidth, doorTop, doorBottom, windowOpenings]);
 
   useEffect(() => {
     const m = new THREE.Matrix4();

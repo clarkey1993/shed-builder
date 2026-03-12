@@ -20,7 +20,7 @@ const DoorFrame = ({ doorType, wallHeight, trimMat }) => {
   const { wallHeightType } = useConfigurator();
   const { woodFraming, woodCladding } = useShedTexturesContext();
   const doorWidth = shedData.door_widths[doorType][wallHeightType];
-  const doorHeight = 6 * 12;
+  const doorHeight = wallHeight;
   const doorTop = -wallHeight / 2 + doorHeight;
   const doorBottom = -wallHeight / 2;
   const doorCenterY = -wallHeight / 2 + doorHeight / 2;
