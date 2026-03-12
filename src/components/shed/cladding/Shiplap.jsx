@@ -10,7 +10,6 @@ const BOARD_HEIGHT = 5;
 const VISIBLE_COVERAGE = 4;
 const BOARD_THICKNESS = 0.6; // Board thickness for believable log-lap
 const OVERLAP = 0.12;
-const STUD_OFFSET = 0.2; // Boards sit in front of stud plane
 const LIGHT_CEDAR = "#f5e0b8"; // Diagnostic: very light warm timber (prefer obviously wooden)
 const COLOR_VARIATION = 0.05;
 
@@ -82,7 +81,7 @@ const Shiplap = ({
     flatCladdingInstances.forEach((inst, i) => {
       // CUMULATIVE ROW DEPTH REMOVED
       m.compose(
-        new THREE.Vector3(inst.x, inst.y, -BOARD_THICKNESS / 2 - STUD_OFFSET),
+        new THREE.Vector3(inst.x, inst.y, -BOARD_THICKNESS / 2 - 0.2),
         new THREE.Quaternion(),
         new THREE.Vector3(inst.width, 1, 1)
       );
