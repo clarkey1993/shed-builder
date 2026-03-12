@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Box, Cylinder } from "@react-three/drei";
 import { useConfigurator } from "../../../context/ConfiguratorContext";
 import { useShedTexturesContext } from "../../../context/ShedTextureContext";
-import { getDoorDimensions } from "../../../systems/framing/getOpeningDimensions";
+import { getDoorDimensions } from "../../../systems/openings/getOpeningDimensions";
 
 const STUD_THICKNESS = 2;
 const STUD_WIDTH = 3;

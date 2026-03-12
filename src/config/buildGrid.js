@@ -1,8 +1,10 @@
 /**
  * Build grid constants for placement and snapping.
- * Used by wall grid overlay and snapping systems.
+ * Used by wall grid overlay. Values from snapRules.
  */
+import { GRID_SNAP, STUD_SNAP } from "../systems/snapping/snapRules";
+
 export const GRID = {
-  CELL_SIZE: 6,
-  STUD_SPACING: 24,
+  CELL_SIZE: GRID_SNAP,
+  STUD_SPACING: STUD_SNAP,
 };

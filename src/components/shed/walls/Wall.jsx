@@ -4,7 +4,7 @@ import * as THREE from "three";
 import { useConfigurator } from "../../../context/ConfiguratorContext";
 import { useBuilder } from "../../../context/BuilderContext";
 import { useShedTexturesContext } from "../../../context/ShedTextureContext";
-import { getWindowDimensions, getDoorDimensions } from "../../../systems/framing/getOpeningDimensions";
+import { getWindowDimensions, getDoorDimensions } from "../../../systems/openings/getOpeningDimensions";
 import DoorFrame from "../doors/DoorFrame";
 import Window from "../windows/Window";
 import WallGrid from "../grid/WallGrid";

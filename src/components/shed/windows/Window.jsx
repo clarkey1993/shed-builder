@@ -3,12 +3,10 @@ import * as THREE from "three";
 import { useThree } from "@react-three/fiber";
 import WindowFrame from "./WindowFrame";
 import { useBuilder } from "../../../context/BuilderContext";
-import { getWindowDimensions } from "../../../systems/framing/getOpeningDimensions";
+import { getWindowDimensions } from "../../../systems/openings/getOpeningDimensions";
+import { GRID_SNAP, STUD_SNAP, STUD_ASSIST_DIST } from "../../../systems/snapping/snapRules";
 
 const STUD = 3;
-const SNAP = 6;
-const STUD_SNAP = 24;
-const STUD_ASSIST_DIST = 3;
 
 function minGapBetween(windowWidth, otherWidth) {
   return windowWidth / 2 + otherWidth / 2 + STUD * 2;
@@ -30,7 +28,7 @@ function clampAndSnap(x, wallWidth, doorHalfWidth, windowWidth, otherWindows = [
   x = Math.max(min, Math.min(max, x));
   const studSnap = Math.round(x / STUD_SNAP) * STUD_SNAP;
   if (Math.abs(x - studSnap) <= STUD_ASSIST_DIST) return studSnap;
-  return Math.round(x / SNAP) * SNAP;
+  return Math.round(x / GRID_SNAP) * GRID_SNAP;
 }
 
 const ELEMENT_ID = (wallId, index) => `window-${wallId}-${index}`;
