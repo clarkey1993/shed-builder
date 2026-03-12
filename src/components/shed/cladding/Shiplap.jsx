@@ -8,11 +8,9 @@ import * as THREE from "three";
 import { RoundedBoxGeometry } from "@react-three/drei";
 const BOARD_HEIGHT = 5;
 const VISIBLE_COVERAGE = 4;
-const BOARD_THICKNESS = 0.6; // Board thickness for believable log-lap
+const BOARD_THICKNESS = 0.9; // Thicker boards for log-lap groove shadow
 const OVERLAP = 0.12;
-const LIGHT_CEDAR = "#f5e0b8"; // Diagnostic: very light warm timber (prefer obviously wooden)
-const COLOR_VARIATION = 0.05;
-
+const BASE_CEDAR = "#d2a679";
 const CLADDING_OFFSET = 0.2;
 
 const Shiplap = ({
@@ -25,7 +23,9 @@ const Shiplap = ({
   claddingOpacity = 1,
   exteriorZSign = 1, // +1 = exterior at +Z, -1 = exterior at -Z (per wall rotation)
 }) => {
-  const claddingRef = useRef();
+  const meshRef0 = useRef();
+  const meshRef1 = useRef();
+  const meshRef2 = useRef();
   const plateThickness = 1.5;
   const studHeight = height - plateThickness * 2;
   // Fallback only when callers omit doorHeight (e.g. malformed props). Normal path: Wall passes doorDims.height.
@@ -76,46 +76,67 @@ const Shiplap = ({
     return list;
   }, [studHeight, width, doorHalfWidth, doorTop, doorBottom, windowOpenings]);
 
+  const instancesByShade = useMemo(() => {
+    const groups = [[], [], []];
+    flatCladdingInstances.forEach((inst) => {
+      const shadeIdx = inst.rowIndex % 3;
+      groups[shadeIdx].push(inst);
+    });
+    return groups;
+  }, [flatCladdingInstances]);
+
   useEffect(() => {
     const m = new THREE.Matrix4();
-    const mesh = claddingRef.current;
-    if (!mesh) return;
-    const baseColor = new THREE.Color(LIGHT_CEDAR);
     const claddingZ = exteriorZSign * (BOARD_THICKNESS / 2 + CLADDING_OFFSET);
-    flatCladdingInstances.forEach((inst, i) => {
-      // CUMULATIVE ROW DEPTH REMOVED
-      m.compose(
-        new THREE.Vector3(inst.x, inst.y, claddingZ),
-        new THREE.Quaternion(),
-        new THREE.Vector3(inst.width, 1, 1)
-      );
-      mesh.setMatrixAt(i, m);
-      const shade = 1.04 + (Math.random() - 0.5) * 0.06;
-      const color = baseColor.clone().multiplyScalar(shade);
-      mesh.setColorAt(i, color);
+    [meshRef0, meshRef1, meshRef2].forEach((ref, shadeIdx) => {
+      const mesh = ref.current;
+      if (!mesh) return;
+      const group = instancesByShade[shadeIdx];
+      group.forEach((inst, i) => {
+        const yOffset = inst.rowIndex * -0.03;
+        m.compose(
+          new THREE.Vector3(inst.x, inst.y + yOffset, claddingZ),
+          new THREE.Quaternion(),
+          new THREE.Vector3(inst.width, 1, 1)
+        );
+        mesh.setMatrixAt(i, m);
+      });
+      mesh.instanceMatrix.needsUpdate = true;
     });
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  }, [flatCladdingInstances, exteriorZSign]);
+  }, [instancesByShade, exteriorZSign]);
 
-  const claddingMat = useMemo(() => (
-    <meshStandardMaterial
-      color={LIGHT_CEDAR}
-      roughness={0.9}
-      metalness={0}
-      vertexColors
-      transparent={claddingOpacity < 1}
-      opacity={claddingOpacity}
-    />
-  ), [claddingOpacity]);
+  const rowShades = [0.95, 1, 1.05]; // 1 + (rowIndex % 3 - 1) * 0.05
+  const materials = useMemo(() => rowShades.map((shade) => {
+    const c = new THREE.Color(BASE_CEDAR).multiplyScalar(shade);
+    return (
+      <meshStandardMaterial
+        key={shade}
+        color={c.getStyle()}
+        roughness={0.75}
+        metalness={0.02}
+      />
+    );
+  }), []);
 
   if (flatCladdingInstances.length === 0) return null;
 
   return (
-    <instancedMesh ref={claddingRef} args={[null, null, flatCladdingInstances.length]} castShadow={false} receiveShadow={false}>
-      <RoundedBoxGeometry attach="geometry" args={[1, VISIBLE_COVERAGE, BOARD_THICKNESS]} radius={0.25} smoothness={4} />
-      {claddingMat}
-    </instancedMesh>
+    <>
+      {instancesByShade.map((group, i) => (
+        group.length > 0 && (
+          <instancedMesh
+            key={i}
+            ref={[meshRef0, meshRef1, meshRef2][i]}
+            args={[null, null, group.length]}
+            castShadow={false}
+            receiveShadow={false}
+          >
+            <RoundedBoxGeometry attach="geometry" args={[1, VISIBLE_COVERAGE, BOARD_THICKNESS]} radius={0.25} smoothness={4} />
+            {materials[i]}
+          </instancedMesh>
+        )
+      ))}
+    </>
   );
 };
 

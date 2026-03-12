@@ -43,10 +43,15 @@ function App() {
               <ShedTextureProvider>
                 <color attach="background" args={["#EBE8E0"]} />
                 <Environment preset="sunset" background={false} />
-                <ambientLight intensity={0.12} />
+                <ambientLight intensity={0.35} />
+                <hemisphereLight
+                  skyColor="#ffffff"
+                  groundColor="#d8c7a0"
+                  intensity={0.6}
+                />
                 <directionalLight
                   position={[15, 20, 10]}
-                  intensity={1.4}
+                  intensity={0.7}
                   castShadow
                   shadow-mapSize-width={2048}
                   shadow-mapSize-height={2048}
@@ -55,7 +60,7 @@ function App() {
                   shadow-camera-right={15}
                   shadow-camera-top={15}
                   shadow-camera-bottom={-15}
-                  shadow-bias={-0.0002}
+                  shadow-bias={-0.0003}
                 />
                 <StudioBackdrop hideForBackground={!!imageUrl} />
                 <Shed />
