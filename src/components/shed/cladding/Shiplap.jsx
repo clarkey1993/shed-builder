@@ -10,9 +10,9 @@ import { useShedTexturesContext } from "../../../context/ShedTextureContext";
 
 const BOARD_HEIGHT = 5;
 const VISIBLE_COVERAGE = 4;
-const BOARD_THICKNESS = 0.6; // Timber thickness, overlap + ROW_DEPTH_OFFSET create shadow lines
+const BOARD_THICKNESS = 0.9; // Visible timber thickness for log-lap profile
 const OVERLAP = 0.12;
-const ROW_DEPTH_OFFSET = 0.12; // Depth stagger for shadow grooves between boards
+const ROW_DEPTH_OFFSET = 0.18; // Depth stagger for clear shadow lines between rows
 const LIGHT_CEDAR = "#c89b6d";
 const COLOR_VARIATION = 0.05;
 
@@ -119,7 +119,7 @@ const Shiplap = ({
 
   return (
     <instancedMesh ref={claddingRef} args={[null, null, flatCladdingInstances.length]} castShadow receiveShadow>
-      <RoundedBoxGeometry attach="geometry" args={[1, VISIBLE_COVERAGE, BOARD_THICKNESS]} radius={0.3} smoothness={4} />
+      <RoundedBoxGeometry attach="geometry" args={[1, VISIBLE_COVERAGE, BOARD_THICKNESS]} radius={0.5} smoothness={4} />
       {claddingMat}
     </instancedMesh>
   );
