@@ -12,6 +12,8 @@ import Shiplap from "../cladding/Shiplap";
 import WallFraming from "../framing/WallFraming";
 
 const WARM_CEDAR = "#e0b890";
+/** Interior face = local -Z; offset framing so it sits on interior side */
+const FRAMING_INTERIOR_OFFSET = 1;
 
 const Wall = ({
   wallId,
@@ -23,7 +25,10 @@ const Wall = ({
   hasDoor,
   doorType,
   claddingOpacity = 1,
+  exteriorZSign = 1,
 }) => {
+  // Interior = opposite of exterior; framing always on interior (cladding untouched)
+  const framingZOffset = -exteriorZSign * FRAMING_INTERIOR_OFFSET;
   const wallGroupRef = useRef();
   const dragPlaneRef = useRef();
   const { shedConfig, setWindowPosition, windowTypes = {}, wallHeightType } = useConfigurator();
@@ -38,9 +43,6 @@ const Wall = ({
   const trimMat = <meshStandardMaterial color={WARM_CEDAR} roughness={0.75} metalness={0.02} />;
 
   const showWallGrid = selectedElementId !== null && selectedElementId.startsWith(`window-${wallId}-`);
-
-  // All walls face outward; exterior is local +Z (away from shed center)
-  const exteriorZSign = 1;
 
   const windowsForFraming = useMemo(
     () => windowPositions.map((x, i) => {
@@ -58,7 +60,7 @@ const Wall = ({
   return (
     <group ref={wallGroupRef} position={position} rotation={rotation}>
       <WallGrid wallId={wallId} width={width} height={height} visible={showWallGrid} />
-      <mesh ref={dragPlaneRef} position={[0, 0, 0.2]}>
+      <mesh ref={dragPlaneRef} position={[0, 0, 0.2 * exteriorZSign]}>
         <planeGeometry args={[width, height]} />
         <meshBasicMaterial
           side={THREE.DoubleSide}
@@ -69,13 +71,24 @@ const Wall = ({
         />
       </mesh>
 
-      {/* Top and bottom plates (always visible) */}
-      <Box args={[width, plateThickness, plateThickness]} position={[0, height / 2 - plateThickness / 2, 0]} castShadow>
-        {woodFraming ? <meshStandardMaterial map={woodFraming} roughness={0.7} metalness={0} color="#8b4513" /> : <meshStandardMaterial color="#8B4513" roughness={0.7} />}
-      </Box>
-      <Box args={[width, plateThickness, plateThickness]} position={[0, -height / 2 + plateThickness / 2, 0]} castShadow>
-        {woodFraming ? <meshStandardMaterial map={woodFraming} roughness={0.7} metalness={0} color="#8b4513" /> : <meshStandardMaterial color="#8B4513" roughness={0.7} />}
-      </Box>
+      {/* Framing (plates + studs) on interior face */}
+      <group position={[0, 0, framingZOffset]}>
+        <Box args={[width, plateThickness, plateThickness]} position={[0, height / 2 - plateThickness / 2, 0]} castShadow>
+          {woodFraming ? <meshStandardMaterial map={woodFraming} roughness={0.7} metalness={0} color="#8b4513" /> : <meshStandardMaterial color="#8B4513" roughness={0.7} />}
+        </Box>
+        <Box args={[width, plateThickness, plateThickness]} position={[0, -height / 2 + plateThickness / 2, 0]} castShadow>
+          {woodFraming ? <meshStandardMaterial map={woodFraming} roughness={0.7} metalness={0} color="#8b4513" /> : <meshStandardMaterial color="#8B4513" roughness={0.7} />}
+        </Box>
+        {showFraming && (
+          <WallFraming
+            wallWidth={width}
+            wallHeight={height}
+            windows={windowsForFraming}
+            doors={doorsForFraming}
+            framingConfig={shedConfig.framing}
+          />
+        )}
+      </group>
 
       <Shiplap
         width={width}
@@ -88,18 +101,8 @@ const Wall = ({
         exteriorZSign={exteriorZSign}
       />
 
-      {showFraming && (
-        <WallFraming
-          wallWidth={width}
-          wallHeight={height}
-          windows={windowsForFraming}
-          doors={doorsForFraming}
-          framingConfig={shedConfig.framing}
-        />
-      )}
-
       {hasDoor && doorType !== "none" && (
-        <DoorFrame doorType={doorType} wallHeight={height} trimMat={trimMat} />
+        <DoorFrame doorType={doorType} wallHeight={height} trimMat={trimMat} exteriorZSign={exteriorZSign} />
       )}
       {windowPositions.map((x, i) => (
         <Window
@@ -119,6 +122,7 @@ const Wall = ({
             const type = (windowTypes[wallId] || [])[j] || "STANDARD";
             return { x: ox, ...getWindowDimensions(type) };
           }).filter((_, j) => j !== i)}
+          exteriorZSign={exteriorZSign}
         />
       ))}
     </group>

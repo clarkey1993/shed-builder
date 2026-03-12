@@ -38,6 +38,7 @@ export default function Window({
   onPositionChange, dragPlaneRef, wallGroupRef, trimMat,
   windowType = "STANDARD",
   otherWindows = [],
+  exteriorZSign = 1,
 }) {
   const { camera, raycaster, gl } = useThree();
   const { setIsDraggingElement, setSelectedElementId, selectedElementId } = useBuilder();
@@ -88,7 +89,7 @@ export default function Window({
   };
 
   return (
-    <group position={[x, 0, 0.5]} castShadow>
+    <group position={[x, 0, 0.5 * exteriorZSign]} castShadow>
       <mesh
         position={[0, 0, 0.1]}
         onPointerDown={onPointerDown}
@@ -106,6 +107,7 @@ export default function Window({
         trimMat={trimMat}
         isHovered={isHovered}
         isSelected={isSelected}
+        exteriorZSign={exteriorZSign}
       />
     </group>
   );

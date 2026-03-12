@@ -94,17 +94,17 @@ const Shed = () => {
         </>
       )}
 
-      {/* Walls - door on front; all face outward from shed center */}
+      {/* Walls: sides use local +Z=exterior; front/back use exteriorZSign=-1; framing derived from exteriorZSign */}
       {showFrontWall && (
-        <Wall wallId="front" width={floorWidth} height={wallHeight} position={[0, wallHeight / 2, -floorDepth / 2]} rotation={[0, 0, 0]} hasDoor doorType={doorType} windowPositions={windowPositions.front} claddingOpacity={claddingOpacity} />
+        <Wall wallId="front" width={floorWidth} height={wallHeight} position={[0, wallHeight / 2, -floorDepth / 2]} rotation={[0, 0, 0]} exteriorZSign={-1} hasDoor doorType={doorType} windowPositions={windowPositions.front} claddingOpacity={claddingOpacity} />
       )}
       {showBackWall && (
-        <Wall wallId="back" width={floorWidth} height={wallHeight} position={[0, wallHeight / 2, floorDepth / 2]} rotation={[0, Math.PI, 0]} windowPositions={windowPositions.back} claddingOpacity={claddingOpacity} />
+        <Wall wallId="back" width={floorWidth} height={wallHeight} position={[0, wallHeight / 2, floorDepth / 2]} rotation={[0, Math.PI, 0]} exteriorZSign={-1} windowPositions={windowPositions.back} claddingOpacity={claddingOpacity} />
       )}
       {showSideWalls && (
         <>
-          <Wall wallId="left" width={floorDepth} height={wallHeight} position={[-floorWidth / 2, wallHeight / 2, 0]} rotation={[0, -Math.PI / 2, 0]} windowPositions={windowPositions.left} claddingOpacity={claddingOpacity} />
-          <Wall wallId="right" width={floorDepth} height={wallHeight} position={[floorWidth / 2, wallHeight / 2, 0]} rotation={[0, Math.PI / 2, 0]} windowPositions={windowPositions.right} claddingOpacity={claddingOpacity} />
+          <Wall wallId="left" width={floorDepth} height={wallHeight} position={[-floorWidth / 2, wallHeight / 2, 0]} rotation={[0, Math.PI / 2, 0]} windowPositions={windowPositions.left} claddingOpacity={claddingOpacity} />
+          <Wall wallId="right" width={floorDepth} height={wallHeight} position={[floorWidth / 2, wallHeight / 2, 0]} rotation={[0, -Math.PI / 2, 0]} windowPositions={windowPositions.right} claddingOpacity={claddingOpacity} />
         </>
       )}
 

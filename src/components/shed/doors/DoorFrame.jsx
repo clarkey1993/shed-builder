@@ -23,7 +23,7 @@ function variedCedarColor(index) {
   return base.clone().multiplyScalar(shade).getStyle();
 }
 
-const DoorFrame = ({ doorType, wallHeight, trimMat }) => {
+const DoorFrame = ({ doorType, wallHeight, trimMat, exteriorZSign = 1 }) => {
   const { wallHeightType } = useConfigurator();
   const { width: doorWidth, height: doorHeight } = getDoorDimensions({
     doorType,
@@ -49,6 +49,9 @@ const DoorFrame = ({ doorType, wallHeight, trimMat }) => {
 
   const trim = trimMat || framingMat;
   const fullW = doorWidth + STUD_WIDTH * 2 + TRIM_OFFSET * 2;
+  const panelZ = DOOR_PANEL_Z * exteriorZSign;
+  const trimZ = (0.25 + TRIM_T / 2) * exteriorZSign;
+  const hingeZ = 0.3 * exteriorZSign;
 
   const doorBoardPositions = useMemo(() => {
     const numBoards = Math.max(1, Math.ceil(doorWidth / DOOR_BOARD_WIDTH));
@@ -69,7 +72,7 @@ const DoorFrame = ({ doorType, wallHeight, trimMat }) => {
         <Box
           key={i}
           args={[DOOR_BOARD_WIDTH, doorHeight, DOOR_BOARD_THICKNESS]}
-          position={[x, doorCenterY, DOOR_PANEL_Z]}
+          position={[x, doorCenterY, panelZ]}
           castShadow
         >
           {doorBoardMats[i]}
@@ -90,16 +93,16 @@ const DoorFrame = ({ doorType, wallHeight, trimMat }) => {
       <Box args={[STUD_WIDTH, wallHeight - STUD_WIDTH * 2, STUD_THICKNESS]} position={[doorWidth / 2 + STUD_WIDTH * 1.5, 0, 0]} castShadow>
         {framingMat}
       </Box>
-      <Box args={[fullW, TRIM_W, TRIM_T]} position={[0, doorTop + TRIM_W / 2, 0.25 + TRIM_T / 2]} castShadow>
+      <Box args={[fullW, TRIM_W, TRIM_T]} position={[0, doorTop + TRIM_W / 2, trimZ]} castShadow>
         {trim}
       </Box>
-      <Box args={[TRIM_W, doorHeight + TRIM_OFFSET * 2, TRIM_T]} position={[-doorWidth / 2 - STUD_WIDTH - TRIM_OFFSET - TRIM_W / 2, -wallHeight / 2 + doorHeight / 2, 0.25 + TRIM_T / 2]} castShadow>
+      <Box args={[TRIM_W, doorHeight + TRIM_OFFSET * 2, TRIM_T]} position={[-doorWidth / 2 - STUD_WIDTH - TRIM_OFFSET - TRIM_W / 2, -wallHeight / 2 + doorHeight / 2, trimZ]} castShadow>
         {trim}
       </Box>
-      <Box args={[TRIM_W, doorHeight + TRIM_OFFSET * 2, TRIM_T]} position={[doorWidth / 2 + STUD_WIDTH + TRIM_OFFSET + TRIM_W / 2, -wallHeight / 2 + doorHeight / 2, 0.25 + TRIM_T / 2]} castShadow>
+      <Box args={[TRIM_W, doorHeight + TRIM_OFFSET * 2, TRIM_T]} position={[doorWidth / 2 + STUD_WIDTH + TRIM_OFFSET + TRIM_W / 2, -wallHeight / 2 + doorHeight / 2, trimZ]} castShadow>
         {trim}
       </Box>
-      <Box args={[fullW, TRIM_W, TRIM_T]} position={[0, doorBottom - TRIM_W / 2, 0.25 + TRIM_T / 2]} castShadow>
+      <Box args={[fullW, TRIM_W, TRIM_T]} position={[0, doorBottom - TRIM_W / 2, trimZ]} castShadow>
         {trim}
       </Box>
       {[
@@ -107,12 +110,12 @@ const DoorFrame = ({ doorType, wallHeight, trimMat }) => {
         { y: -wallHeight / 2 + doorHeight / 2, h: 10 },
         { y: doorBottom + 4, h: 8 },
       ].map(({ y, h }, i) => (
-        <group key={i} position={[-doorWidth / 2 - STUD_WIDTH / 2 - 0.2, y, 0.3]}>
+        <group key={i} position={[-doorWidth / 2 - STUD_WIDTH / 2 - 0.2, y, hingeZ]}>
           <Box args={[1.5, h, 0.3]} castShadow>{metalMat}</Box>
           <Box args={[4, 1.5, 0.3]} position={[2, -h / 2, 0]} castShadow>{metalMat}</Box>
         </group>
       ))}
-      <group position={[doorWidth / 2 + STUD_WIDTH / 2 + 0.2, -wallHeight / 2 + doorHeight / 2 - 8, 0.3]}>
+      <group position={[doorWidth / 2 + STUD_WIDTH / 2 + 0.2, -wallHeight / 2 + doorHeight / 2 - 8, hingeZ]}>
         <Box args={[2, 6, 0.4]} castShadow>{metalMat}</Box>
         <Cylinder args={[1.5, 1.5, 0.5, 8]} rotation={[0, 0, Math.PI / 2]} castShadow>{metalMat}</Cylinder>
       </group>

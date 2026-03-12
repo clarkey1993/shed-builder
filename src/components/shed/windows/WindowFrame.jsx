@@ -9,7 +9,9 @@ const TRIM_W = 2;
 const TRIM_T = 1;
 const TRIM_OFFSET = 0.5;
 
-const WindowFrame = ({ windowWidth, windowHeight, positionX, positionY, trimMat, isHovered = false, isSelected = false }) => {
+const TRIM_Z = 0.25 + TRIM_T / 2;
+const WindowFrame = ({ windowWidth, windowHeight, positionX, positionY, trimMat, isHovered = false, isSelected = false, exteriorZSign = 1 }) => {
+  const trimZ = TRIM_Z * exteriorZSign;
   const { woodFraming } = useShedTexturesContext();
   const emissive = (isHovered || isSelected) ? 0.08 : 0;
   const WARM_CEDAR = "#e0b890";
@@ -24,17 +26,18 @@ const WindowFrame = ({ windowWidth, windowHeight, positionX, positionY, trimMat,
 
   const outlineLine = useMemo(() => {
     const m = 2;
+    const outlineZ = 0.5 * exteriorZSign;
     const pts = [
-      new THREE.Vector3(-fullW / 2 - m, fullH / 2 + m, 0.5),
-      new THREE.Vector3(fullW / 2 + m, fullH / 2 + m, 0.5),
-      new THREE.Vector3(fullW / 2 + m, -fullH / 2 - m, 0.5),
-      new THREE.Vector3(-fullW / 2 - m, -fullH / 2 - m, 0.5),
-      new THREE.Vector3(-fullW / 2 - m, fullH / 2 + m, 0.5),
+      new THREE.Vector3(-fullW / 2 - m, fullH / 2 + m, outlineZ),
+      new THREE.Vector3(fullW / 2 + m, fullH / 2 + m, outlineZ),
+      new THREE.Vector3(fullW / 2 + m, -fullH / 2 - m, outlineZ),
+      new THREE.Vector3(-fullW / 2 - m, -fullH / 2 - m, outlineZ),
+      new THREE.Vector3(-fullW / 2 - m, fullH / 2 + m, outlineZ),
     ];
     const geom = new THREE.BufferGeometry().setFromPoints(pts);
     const mat = new THREE.LineBasicMaterial({ color: 0x4a5568 });
     return new THREE.Line(geom, mat);
-  }, [fullW, fullH]);
+  }, [fullW, fullH, exteriorZSign]);
 
   return (
     <group position={[positionX, positionY, 0]}>
@@ -51,16 +54,16 @@ const WindowFrame = ({ windowWidth, windowHeight, positionX, positionY, trimMat,
       <Box args={[STUD_WIDTH, windowHeight - STUD_WIDTH * 2, STUD_THICKNESS]} position={[windowWidth / 2 + STUD_WIDTH / 2, 0, 0]} castShadow>
         {framingMat}
       </Box>
-      <Box args={[fullW, TRIM_W, TRIM_T]} position={[0, windowHeight / 2 + TRIM_OFFSET + TRIM_W / 2, 0.25 + TRIM_T / 2]} castShadow>
+      <Box args={[fullW, TRIM_W, TRIM_T]} position={[0, windowHeight / 2 + TRIM_OFFSET + TRIM_W / 2, trimZ]} castShadow>
         {trim}
       </Box>
-      <Box args={[fullW, TRIM_W, TRIM_T]} position={[0, -windowHeight / 2 - TRIM_OFFSET - TRIM_W / 2, 0.25 + TRIM_T / 2]} castShadow>
+      <Box args={[fullW, TRIM_W, TRIM_T]} position={[0, -windowHeight / 2 - TRIM_OFFSET - TRIM_W / 2, trimZ]} castShadow>
         {trim}
       </Box>
-      <Box args={[TRIM_W, fullH, TRIM_T]} position={[-windowWidth / 2 - TRIM_OFFSET - TRIM_W / 2, 0, 0.25 + TRIM_T / 2]} castShadow>
+      <Box args={[TRIM_W, fullH, TRIM_T]} position={[-windowWidth / 2 - TRIM_OFFSET - TRIM_W / 2, 0, trimZ]} castShadow>
         {trim}
       </Box>
-      <Box args={[TRIM_W, fullH, TRIM_T]} position={[windowWidth / 2 + TRIM_OFFSET + TRIM_W / 2, 0, 0.25 + TRIM_T / 2]} castShadow>
+      <Box args={[TRIM_W, fullH, TRIM_T]} position={[windowWidth / 2 + TRIM_OFFSET + TRIM_W / 2, 0, trimZ]} castShadow>
         {trim}
       </Box>
     </group>
