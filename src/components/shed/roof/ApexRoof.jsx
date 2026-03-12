@@ -4,9 +4,10 @@ import { Box, Cone } from "@react-three/drei";
 import { useConfigurator } from "../../../context/ConfiguratorContext";
 import { useShedTexturesContext } from "../../../context/ShedTextureContext";
 
-const EAVE_OVERHANG = 5;
-const FASCIA_W = 4;
-const FASCIA_T = 1.5;
+const EAVE_OVERHANG = 4;
+const FASCIA_HEIGHT = 4;
+const FASCIA_THICKNESS = 0.75;
+const RIDGE_CAP_WIDTH = 4;
 const FINIAL_H = 6;
 const FINIAL_R = 2;
 const RAFTER_SPACING = 24;
@@ -60,8 +61,10 @@ const ApexRoof = ({ width, depth, opacity = 1, showFraming = false }) => {
         <extrudeGeometry args={[shape, extrudeSettings]} />
         {roofMat}
       </mesh>
-      <Box args={[roofWidth + FASCIA_T * 2, FASCIA_W, FASCIA_T]} position={[0, -FASCIA_W / 2, 0]} castShadow>{fasciaMat}</Box>
-      <Box args={[roofWidth + FASCIA_T * 2, FASCIA_W, FASCIA_T]} position={[0, -FASCIA_W / 2, roofDepth]} castShadow>{fasciaMat}</Box>
+      <Box args={[roofWidth + 20, 16, 3]} position={[0, -8, 0]} castShadow>{fasciaMat}</Box>
+      <Box args={[roofWidth + 20, 16, 3]} position={[0, -8, roofDepth]} castShadow>{fasciaMat}</Box>
+      {/* Ridge cap - board along roof ridge */}
+      <Box args={[RIDGE_CAP_WIDTH, 1, roofDepth]} position={[0, roofPeak + 0.5, roofDepth / 2]} castShadow>{fasciaMat}</Box>
       <Cone args={[FINIAL_R, FINIAL_H, 4]} position={[0, roofPeak + FINIAL_H / 2, 0]} rotation={[0, 0, Math.PI / 4]} castShadow>{fasciaMat}</Cone>
       <Cone args={[FINIAL_R, FINIAL_H, 4]} position={[0, roofPeak + FINIAL_H / 2, roofDepth]} rotation={[0, 0, Math.PI / 4]} castShadow>{fasciaMat}</Cone>
       {showFraming && (

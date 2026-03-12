@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Box, Cylinder } from "@react-three/drei";
 import { useConfigurator } from "../../../context/ConfiguratorContext";
 import { useShedTexturesContext } from "../../../context/ShedTextureContext";
@@ -8,16 +9,21 @@ const STUD_WIDTH = 3;
 const TRIM_W = 2;
 const TRIM_T = 1;
 const TRIM_OFFSET = 0.5;
+const DOOR_BOARD_WIDTH = 4;
+const DOOR_BOARD_THICKNESS = 0.6;
+const DOOR_PANEL_Z = 0.35;
+const LIGHT_CEDAR = "#c89b6d";
 
 const metalMat = <meshStandardMaterial color="#9ca3af" roughness={0.85} metalness={0.6} />;
 
 const DoorFrame = ({ doorType, wallHeight, trimMat }) => {
   const { wallHeightType } = useConfigurator();
-  const { woodFraming } = useShedTexturesContext();
+  const { woodFraming, woodCladding } = useShedTexturesContext();
   const doorWidth = shedData.door_widths[doorType][wallHeightType];
   const doorHeight = 6 * 12;
   const doorTop = -wallHeight / 2 + doorHeight;
   const doorBottom = -wallHeight / 2;
+  const doorCenterY = -wallHeight / 2 + doorHeight / 2;
 
   const framingMat = woodFraming ? (
     <meshStandardMaterial map={woodFraming} roughness={0.65} metalness={0.1} color="#b06500" />
@@ -25,11 +31,40 @@ const DoorFrame = ({ doorType, wallHeight, trimMat }) => {
     <meshStandardMaterial color="#b06500" roughness={0.65} metalness={0.1} />
   );
 
+  const doorBoardMat = woodCladding ? (
+    <meshStandardMaterial map={woodCladding} roughness={0.7} metalness={0.1} color={LIGHT_CEDAR} />
+  ) : (
+    <meshStandardMaterial roughness={0.7} metalness={0.1} color={LIGHT_CEDAR} />
+  );
+
   const trim = trimMat || framingMat;
   const fullW = doorWidth + STUD_WIDTH * 2 + TRIM_OFFSET * 2;
 
+  const doorBoardPositions = useMemo(() => {
+    const numBoards = Math.max(1, Math.ceil(doorWidth / DOOR_BOARD_WIDTH));
+    const positions = [];
+    for (let i = 0; i < numBoards; i++) {
+      const x = numBoards === 1
+        ? 0
+        : -doorWidth / 2 + DOOR_BOARD_WIDTH / 2 + (i / (numBoards - 1)) * (doorWidth - DOOR_BOARD_WIDTH);
+      positions.push(x);
+    }
+    return positions;
+  }, [doorWidth]);
+
   return (
     <group>
+      {/* Vertical door boards - door panel */}
+      {doorBoardPositions.map((x, i) => (
+        <Box
+          key={i}
+          args={[DOOR_BOARD_WIDTH, doorHeight, DOOR_BOARD_THICKNESS]}
+          position={[x, doorCenterY, DOOR_PANEL_Z]}
+          castShadow
+        >
+          {doorBoardMat}
+        </Box>
+      ))}
       <Box args={[doorWidth + STUD_WIDTH * 2, STUD_WIDTH * 2, STUD_THICKNESS]} position={[0, doorHeight / 2, 0]} castShadow>
         {framingMat}
       </Box>

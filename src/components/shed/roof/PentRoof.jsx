@@ -4,9 +4,9 @@ import { Box } from "@react-three/drei";
 import { useShedTexturesContext } from "../../../context/ShedTextureContext";
 import shedData from "../../../shedData.json";
 
-const EAVE_OVERHANG = 5;
-const FASCIA_W = 4;
-const FASCIA_T = 1.5;
+const EAVE_OVERHANG = 4;
+const FASCIA_HEIGHT = 4;
+const FASCIA_THICKNESS = 0.75;
 const RAFTER_SPACING = 24;
 const RAFTER_W = 2;
 const RAFTER_T = 3;
@@ -43,8 +43,8 @@ const PentRoof = ({ width: floorWidth, depth: floorDepth, opacity = 1, showFrami
   return (
     <group position={[0, midHeight, 0]} rotation={[angle, 0, 0]}>
       <Box args={[roofW, roofThickness, roofD]} castShadow receiveShadow>{roofMat}</Box>
-      <Box args={[roofW + FASCIA_T * 2, FASCIA_W, FASCIA_T]} position={[0, roofThickness / 2 + FASCIA_W / 2, -roofD / 2]} castShadow>{fasciaMat}</Box>
-      <Box args={[roofW + FASCIA_T * 2, FASCIA_W, FASCIA_T]} position={[0, roofThickness / 2 + FASCIA_W / 2, roofD / 2]} castShadow>{fasciaMat}</Box>
+      <Box args={[roofW + 20, 16, 3]} position={[0, roofThickness / 2 + 8, -roofD / 2]} castShadow>{fasciaMat}</Box>
+      <Box args={[roofW + 20, 16, 3]} position={[0, roofThickness / 2 + 8, roofD / 2]} castShadow>{fasciaMat}</Box>
       {showFraming && Array.from({ length: numRafters }).map((_, i) => (
         <Box key={i} args={[RAFTER_T, RAFTER_W, roofD]} position={[-roofW / 2 + i * RAFTER_SPACING, roofThickness / 2, 0]} castShadow>
           {fasciaMat}

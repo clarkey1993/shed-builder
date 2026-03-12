@@ -1,19 +1,21 @@
 /**
- * Shiplap - Horizontal wooden cladding boards.
- * Boards run horizontally, stack vertically. Light cedar tone with subtle variation.
+ * Log-lap cladding - Horizontal wooden boards with rounded front profile.
+ * Boards run horizontally, overlap the board below, stack vertically.
+ * Warm cedar tone with ±5% brightness variation.
  */
-import { RoundedBoxGeometry } from "@react-three/drei";
 import { useMemo, useRef, useEffect } from "react";
 import * as THREE from "three";
+import { RoundedBoxGeometry } from "@react-three/drei";
 import { useShedTexturesContext } from "../../../context/ShedTextureContext";
 
 const W = 22;
 const WINDOW_HEIGHT = 36;
-const BOARD_WIDTH = 5;
+const BOARD_HEIGHT = 5;
 const VISIBLE_COVERAGE = 4;
-const BOARD_THICKNESS = 0.5;
-const ROW_DEPTH_OFFSET = 0.05;
-const LIGHT_CEDAR = "#c89b6d";
+const BOARD_THICKNESS = 0.6;
+const OVERLAP = 0.12;
+const ROW_DEPTH_OFFSET = 0.06;
+const LIGHT_CEDAR = "#3d2817";
 const COLOR_VARIATION = 0.05;
 
 const Shiplap = ({
@@ -33,10 +35,10 @@ const Shiplap = ({
   const doorBottom = -height / 2;
   const winHalfH = WINDOW_HEIGHT / 2 + 2;
 
-  const { horizontalCladdingRows, flatCladdingInstances } = useMemo(() => {
+  const flatCladdingInstances = useMemo(() => {
     const rows = [];
     const halfStudH = studHeight / 2;
-    for (let y = -halfStudH + VISIBLE_COVERAGE / 2; y <= halfStudH - VISIBLE_COVERAGE / 2 + 0.1; y += VISIBLE_COVERAGE) {
+    for (let y = -halfStudH + VISIBLE_COVERAGE / 2; y <= halfStudH - VISIBLE_COVERAGE / 2 + 0.1; y += VISIBLE_COVERAGE - OVERLAP) {
       let segs = [{ start: -width / 2, end: width / 2 }];
       const cut = (minX, maxX) => {
         segs = segs.flatMap((s) => {
@@ -56,7 +58,7 @@ const Shiplap = ({
       const segments = segs
         .filter((s) => s.end - s.start > 1)
         .map((s) => ({ xCenter: (s.start + s.end) / 2, segWidth: s.end - s.start }));
-      if (segments.length) rows.push({ y, segments });
+      rows.push({ y, segments });
     }
     const list = [];
     rows.forEach((row, rowIdx) => {
@@ -69,7 +71,7 @@ const Shiplap = ({
         });
       });
     });
-    return { horizontalCladdingRows: rows, flatCladdingInstances: list };
+    return list;
   }, [studHeight, width, doorHalfWidth, doorTop, doorBottom, windowPositions]);
 
   useEffect(() => {
@@ -80,7 +82,7 @@ const Shiplap = ({
     flatCladdingInstances.forEach((inst, i) => {
       const depthOff = inst.rowIndex * ROW_DEPTH_OFFSET;
       m.compose(
-        new THREE.Vector3(inst.x, inst.y, -0.25 - depthOff),
+        new THREE.Vector3(inst.x, inst.y, -BOARD_THICKNESS / 2 - 0.2 - depthOff),
         new THREE.Quaternion(),
         new THREE.Vector3(inst.width, 1, 1)
       );
@@ -114,7 +116,7 @@ const Shiplap = ({
 
   return (
     <instancedMesh ref={claddingRef} args={[null, null, flatCladdingInstances.length]} castShadow receiveShadow>
-      <RoundedBoxGeometry args={[1, VISIBLE_COVERAGE, BOARD_THICKNESS]} radius={0.12} smoothness={2} />
+      <RoundedBoxGeometry attach="geometry" args={[1, VISIBLE_COVERAGE, BOARD_THICKNESS]} radius={0.35} smoothness={2} />
       {claddingMat}
     </instancedMesh>
   );

@@ -7,8 +7,8 @@ import { ApexRoof, PentRoof, Wall } from "./index";
 import InternalPartition from "./InternalPartition";
 import { useShedTexturesContext } from "../../context/ShedTextureContext";
 
-const CORNER_POST_W = 3;
-const CORNER_POST_T = 1.5;
+const CORNER_TRIM_WIDTH = 3;
+const CORNER_TRIM_THICKNESS = 0.75;
 
 const Shed = () => {
   const { shedConfig, roofStyle, windowPositions, doorType } = useConfigurator();
@@ -39,11 +39,7 @@ const Shed = () => {
   ) : (
     <meshStandardMaterial color="#8B4513" roughness={0.7} />
   );
-  const cornerPostMat = woodFraming ? (
-    <meshStandardMaterial map={woodFraming} roughness={0.7} metalness={0} color="#8b5a2b" />
-  ) : (
-    <meshStandardMaterial color="#8b5a2b" roughness={0.7} />
-  );
+  const cornerPostMat = <meshStandardMaterial color="#ff0000" roughness={0.7} metalness={0} />;
   const floorMat = useMemo(() => {
     if (!osb) return <meshStandardMaterial color="#a9a9a9" roughness={0.85} />;
     const tex = osb.clone();
@@ -53,6 +49,10 @@ const Shed = () => {
 
   return (
     <group scale={1 / 12}>
+      {/* TEMP: Live Shed component marker - remove after verifying render path */}
+      <Box args={[200, 80, 200]} position={[0, 150, 0]} castShadow>
+        <meshStandardMaterial color="#ff00ff" />
+      </Box>
       {/* Floor Bearers - wood texture, slightly varied roughness */}
       {(() => {
         const bearers = [];
@@ -80,17 +80,17 @@ const Shed = () => {
         {floorMat}
       </Box>
 
-      {/* Corner posts (vertical trim) - shown when walls are present */}
+      {/* Corner trims (vertical boards to hide cladding ends) - width 3", thickness 0.75" */}
       {showCornerPosts && (
         <>
-          <Box args={[CORNER_POST_W, wallHeight, CORNER_POST_T]} position={[-floorWidth / 2 - CORNER_POST_T / 2, wallHeight / 2, -floorDepth / 2]} castShadow>{cornerPostMat}</Box>
-          <Box args={[CORNER_POST_T, wallHeight, CORNER_POST_W]} position={[-floorWidth / 2, wallHeight / 2, -floorDepth / 2 - CORNER_POST_T / 2]} castShadow>{cornerPostMat}</Box>
-          <Box args={[CORNER_POST_W, wallHeight, CORNER_POST_T]} position={[floorWidth / 2 + CORNER_POST_T / 2, wallHeight / 2, -floorDepth / 2]} castShadow>{cornerPostMat}</Box>
-          <Box args={[CORNER_POST_T, wallHeight, CORNER_POST_W]} position={[floorWidth / 2, wallHeight / 2, -floorDepth / 2 - CORNER_POST_T / 2]} castShadow>{cornerPostMat}</Box>
-          <Box args={[CORNER_POST_W, wallHeight, CORNER_POST_T]} position={[-floorWidth / 2 - CORNER_POST_T / 2, wallHeight / 2, floorDepth / 2]} castShadow>{cornerPostMat}</Box>
-          <Box args={[CORNER_POST_T, wallHeight, CORNER_POST_W]} position={[-floorWidth / 2, wallHeight / 2, floorDepth / 2 + CORNER_POST_T / 2]} castShadow>{cornerPostMat}</Box>
-          <Box args={[CORNER_POST_W, wallHeight, CORNER_POST_T]} position={[floorWidth / 2 + CORNER_POST_T / 2, wallHeight / 2, floorDepth / 2]} castShadow>{cornerPostMat}</Box>
-          <Box args={[CORNER_POST_T, wallHeight, CORNER_POST_W]} position={[floorWidth / 2, wallHeight / 2, floorDepth / 2 + CORNER_POST_T / 2]} castShadow>{cornerPostMat}</Box>
+          <Box args={[CORNER_TRIM_WIDTH, wallHeight, CORNER_TRIM_THICKNESS]} position={[-floorWidth / 2 - CORNER_TRIM_THICKNESS / 2, wallHeight / 2, -floorDepth / 2]} castShadow>{cornerPostMat}</Box>
+          <Box args={[CORNER_TRIM_THICKNESS, wallHeight, CORNER_TRIM_WIDTH]} position={[-floorWidth / 2, wallHeight / 2, -floorDepth / 2 - CORNER_TRIM_THICKNESS / 2]} castShadow>{cornerPostMat}</Box>
+          <Box args={[CORNER_TRIM_WIDTH, wallHeight, CORNER_TRIM_THICKNESS]} position={[floorWidth / 2 + CORNER_TRIM_THICKNESS / 2, wallHeight / 2, -floorDepth / 2]} castShadow>{cornerPostMat}</Box>
+          <Box args={[CORNER_TRIM_THICKNESS, wallHeight, CORNER_TRIM_WIDTH]} position={[floorWidth / 2, wallHeight / 2, -floorDepth / 2 - CORNER_TRIM_THICKNESS / 2]} castShadow>{cornerPostMat}</Box>
+          <Box args={[CORNER_TRIM_WIDTH, wallHeight, CORNER_TRIM_THICKNESS]} position={[-floorWidth / 2 - CORNER_TRIM_THICKNESS / 2, wallHeight / 2, floorDepth / 2]} castShadow>{cornerPostMat}</Box>
+          <Box args={[CORNER_TRIM_THICKNESS, wallHeight, CORNER_TRIM_WIDTH]} position={[-floorWidth / 2, wallHeight / 2, floorDepth / 2 + CORNER_TRIM_THICKNESS / 2]} castShadow>{cornerPostMat}</Box>
+          <Box args={[CORNER_TRIM_WIDTH, wallHeight, CORNER_TRIM_THICKNESS]} position={[floorWidth / 2 + CORNER_TRIM_THICKNESS / 2, wallHeight / 2, floorDepth / 2]} castShadow>{cornerPostMat}</Box>
+          <Box args={[CORNER_TRIM_THICKNESS, wallHeight, CORNER_TRIM_WIDTH]} position={[floorWidth / 2, wallHeight / 2, floorDepth / 2 + CORNER_TRIM_THICKNESS / 2]} castShadow>{cornerPostMat}</Box>
         </>
       )}
 
