@@ -8,11 +8,11 @@ import * as THREE from "three";
 import { RoundedBoxGeometry } from "@react-three/drei";
 const BOARD_HEIGHT = 5;
 const VISIBLE_COVERAGE = 4;
-const BOARD_THICKNESS = 0.6; // Thinner boards = shallower grooves, less shadow
+const BOARD_THICKNESS = 0.5; // Diagnostic: thinner = less shadow; minimal groove
 const OVERLAP = 0.12;
-const ROW_DEPTH_OFFSET = 0.025; // Very subtle step; cap prevents cumulative black striping
-const ROW_DEPTH_CAP = 0.2; // Max total recession so lower rows don't vanish into shadow
-const LIGHT_CEDAR = "#eac99e"; // Light warm cedar; prioritize color over texture
+const ROW_DEPTH_OFFSET = 0.01; // Diagnostic: near-flat to remove heavy dark banding
+const ROW_DEPTH_CAP = 0.05; // Diagnostic: cap keeps overlap line but no striping
+const LIGHT_CEDAR = "#f5e0b8"; // Diagnostic: very light warm timber (prefer obviously wooden)
 const COLOR_VARIATION = 0.05;
 
 const Shiplap = ({
@@ -89,7 +89,7 @@ const Shiplap = ({
         new THREE.Vector3(inst.width, 1, 1)
       );
       mesh.setMatrixAt(i, m);
-      const shade = 1.04 + (Math.random() - 0.5) * 0.06; // 1.01–1.07 so no board darkens
+      const shade = 1.06 + (Math.random() - 0.5) * 0.04; // 1.04–1.08; all boards light
       const color = baseColor.clone().multiplyScalar(shade);
       mesh.setColorAt(i, color);
     });
@@ -106,8 +106,8 @@ const Shiplap = ({
       opacity: claddingOpacity,
       vertexColors: true,
     };
-    // DIAGNOSTIC: wall was near-black due to (c) BOTH: (a) woodCladding map darkened boards — bypassed, color-only.
-    // (b) depth offset was aggressive — ROW_DEPTH_OFFSET reduced + ROW_DEPTH_CAP prevents cumulative striping.
+    // DIAGNOSTIC PASS: woodCladding BYPASSED, woodCladdingBump BYPASSED. Plain meshStandardMaterial,
+    // color-only, no texture maps. Depth/striping reduced so wall reads obviously timber.
     return <meshStandardMaterial {...matProps} />;
   }, [claddingOpacity]);
 
@@ -115,7 +115,7 @@ const Shiplap = ({
 
   return (
     <instancedMesh ref={claddingRef} args={[null, null, flatCladdingInstances.length]} castShadow receiveShadow>
-      <RoundedBoxGeometry attach="geometry" args={[1, VISIBLE_COVERAGE, BOARD_THICKNESS]} radius={0.3} smoothness={4} />
+      <RoundedBoxGeometry attach="geometry" args={[1, VISIBLE_COVERAGE, BOARD_THICKNESS]} radius={0.25} smoothness={4} />
       {claddingMat}
     </instancedMesh>
   );
