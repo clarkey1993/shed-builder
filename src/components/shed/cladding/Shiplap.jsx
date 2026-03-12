@@ -80,6 +80,7 @@ const Shiplap = ({
     if (!mesh) return;
     const baseColor = new THREE.Color(LIGHT_CEDAR);
     flatCladdingInstances.forEach((inst, i) => {
+      // CUMULATIVE ROW DEPTH REMOVED
       m.compose(
         new THREE.Vector3(inst.x, inst.y, -BOARD_THICKNESS / 2 - STUD_OFFSET),
         new THREE.Quaternion(),
