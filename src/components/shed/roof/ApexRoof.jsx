@@ -37,11 +37,19 @@ const ApexRoof = ({ width, depth, opacity = 1, showFraming = false }) => {
 
   const roofMat = useMemo(() => {
     const transparent = opacity < 1;
-    const roofColor = "#1e1e1e";
-    if (!roofFelt) return <meshStandardMaterial color={roofColor} roughness={0.98} metalness={0} transparent={transparent} opacity={opacity} depthWrite={!transparent} />;
+    const roofColor = "#2a2a2e";
+    const matProps = {
+      color: roofColor,
+      roughness: 0.99,
+      metalness: 0,
+      transparent,
+      opacity,
+      depthWrite: !transparent,
+    };
+    if (!roofFelt) return <meshStandardMaterial {...matProps} />;
     const tex = roofFelt.clone();
     tex.repeat.set(roofWidth / 24, roofDepth / 24);
-    return <meshStandardMaterial map={tex} roughness={0.98} metalness={0} color={roofColor} transparent={transparent} opacity={opacity} depthWrite={!transparent} />;
+    return <meshStandardMaterial {...matProps} map={tex} />;
   }, [roofFelt, roofWidth, roofDepth, opacity]);
 
   const WARM_CEDAR = "#c89b6d";

@@ -24,11 +24,19 @@ const PentRoof = ({ width: floorWidth, depth: floorDepth, opacity = 1, showFrami
 
   const roofMat = useMemo(() => {
     const transparent = opacity < 1;
-    const roofColor = "#1e1e1e";
-    if (!roofFelt) return <meshStandardMaterial color={roofColor} roughness={0.98} metalness={0} transparent={transparent} opacity={opacity} depthWrite={!transparent} />;
+    const roofColor = "#2a2a2e";
+    const matProps = {
+      color: roofColor,
+      roughness: 0.99,
+      metalness: 0,
+      transparent,
+      opacity,
+      depthWrite: !transparent,
+    };
+    if (!roofFelt) return <meshStandardMaterial {...matProps} />;
     const tex = roofFelt.clone();
     tex.repeat.set((floorWidth + EAVE_OVERHANG * 2) / 24, (floorDepth + EAVE_OVERHANG * 2) / 24);
-    return <meshStandardMaterial map={tex} roughness={0.98} metalness={0} color={roofColor} transparent={transparent} opacity={opacity} depthWrite={!transparent} />;
+    return <meshStandardMaterial {...matProps} map={tex} />;
   }, [roofFelt, floorWidth, floorDepth, opacity]);
 
   const WARM_CEDAR = "#c89b6d";

@@ -89,22 +89,24 @@ function createWoodTexture(width = 128, height = 128, options = {}) {
   return tex;
 }
 
-// Dark matte roofing felt: grainy texture with visible fibre-like noise. Non-shiny, realistic.
+// Dark matte roofing felt: charcoal/slate tone with fibre-like texture. Non-shiny, realistic.
 function createRoofTexture(width = 256, height = 256) {
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d");
   const img = ctx.createImageData(width, height);
-  const base = [0x1e, 0x1e, 0x1e]; // Dark roofing felt
+  const base = [0x2a, 0x2a, 0x2e]; // Dark charcoal with slight slate tint
   for (let i = 0; i < img.data.length; i += 4) {
     const x = (i / 4) % width;
     const y = Math.floor(i / 4 / width);
-    const noise = (Math.sin(x * 0.3) * 0.02 + Math.sin(y * 0.5) * 0.02) + (Math.random() - 0.5) * 0.08;
-    const v = 0.92 + noise + Math.random() * 0.04;
-    img.data[i] = Math.min(255, Math.max(0, base[0] * v));
-    img.data[i + 1] = Math.min(255, Math.max(0, base[1] * v));
-    img.data[i + 2] = Math.min(255, Math.max(0, base[2] * v));
+    const grain = Math.sin(x * 0.15) * 0.03 + Math.sin(y * 0.2) * 0.03;
+    const fibre = (Math.sin(x * 1.2 + y * 0.8) * 0.5 + 0.5) * 0.06;
+    const v = 0.88 + grain + fibre + (Math.random() - 0.5) * 0.04;
+    const s = Math.min(1.02, Math.max(0.95, v));
+    img.data[i] = Math.min(255, Math.max(0, base[0] * s));
+    img.data[i + 1] = Math.min(255, Math.max(0, base[1] * s));
+    img.data[i + 2] = Math.min(255, Math.max(0, base[2] * s));
     img.data[i + 3] = 255;
   }
   ctx.putImageData(img, 0, 0);
