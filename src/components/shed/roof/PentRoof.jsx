@@ -5,6 +5,7 @@ import { useShedTexturesContext } from "../../../context/ShedTextureContext";
 import shedData from "../../../shedData.json";
 
 const EAVE_OVERHANG = 4;
+const SIDE_OVERHANG = 2;
 const FASCIA_HEIGHT = 5;
 const FASCIA_THICKNESS = 1;
 const RAFTER_SPACING = 24;
@@ -21,6 +22,8 @@ const PentRoof = ({ width: floorWidth, depth: floorDepth, opacity = 1, showFrami
   const roofThickness = 4;
   const angle = Math.atan((frontHeight - backHeight) / floorDepth);
   const midHeight = (frontHeight + backHeight) / 2;
+  const roofW = floorWidth + EAVE_OVERHANG * 2 + SIDE_OVERHANG * 2;
+  const roofD = floorDepth + EAVE_OVERHANG * 2;
 
   const roofMat = useMemo(() => {
     const transparent = opacity < 1;
@@ -35,15 +38,12 @@ const PentRoof = ({ width: floorWidth, depth: floorDepth, opacity = 1, showFrami
     };
     if (!roofFelt) return <meshStandardMaterial {...matProps} />;
     const tex = roofFelt.clone();
-    tex.repeat.set((floorWidth + EAVE_OVERHANG * 2) / 24, (floorDepth + EAVE_OVERHANG * 2) / 24);
+    tex.repeat.set(roofW / 24, roofD / 24);
     return <meshStandardMaterial {...matProps} map={tex} />;
-  }, [roofFelt, floorWidth, floorDepth, opacity]);
+  }, [roofFelt, roofW, roofD, opacity]);
 
   const WARM_CEDAR = "#e0b890";
   const fasciaMat = <meshStandardMaterial color={WARM_CEDAR} roughness={0.75} metalness={0.02} transparent={opacity < 1} opacity={opacity} depthWrite={opacity >= 1} />;
-
-  const roofW = floorWidth + EAVE_OVERHANG * 2;
-  const roofD = floorDepth + EAVE_OVERHANG * 2;
   const numRafters = Math.floor(roofW / RAFTER_SPACING) + 1;
 
   return (

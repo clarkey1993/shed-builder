@@ -5,6 +5,7 @@ import { useConfigurator } from "../../../context/ConfiguratorContext";
 import { useShedTexturesContext } from "../../../context/ShedTextureContext";
 
 const EAVE_OVERHANG = 4;
+const SIDE_OVERHANG = 2;
 const FASCIA_HEIGHT = 5;
 const FASCIA_THICKNESS = 1;
 const RIDGE_CAP_WIDTH = 4;
@@ -22,11 +23,11 @@ const ApexRoof = ({ width, depth, opacity = 1, showFraming = false }) => {
   const totalHeight = shedConfig.roofPeakHeight;
   const roofPeak = totalHeight - wallHeight;
   const roofDepth = depth + EAVE_OVERHANG * 2;
-  const roofWidth = width + EAVE_OVERHANG * 2;
+  const roofWidth = width + EAVE_OVERHANG * 2 + SIDE_OVERHANG * 2;
 
   const shape = new THREE.Shape();
-  shape.moveTo(-width / 2 - EAVE_OVERHANG, 0);
-  shape.lineTo(width / 2 + EAVE_OVERHANG, 0);
+  shape.moveTo(-width / 2 - EAVE_OVERHANG - SIDE_OVERHANG, 0);
+  shape.lineTo(width / 2 + EAVE_OVERHANG + SIDE_OVERHANG, 0);
   shape.lineTo(0, roofPeak);
   shape.closePath();
 
@@ -56,7 +57,7 @@ const ApexRoof = ({ width, depth, opacity = 1, showFraming = false }) => {
   const fasciaMat = <meshStandardMaterial color={WARM_CEDAR} roughness={0.75} metalness={0.02} transparent={opacity < 1} opacity={opacity} depthWrite={opacity >= 1} />;
 
   const roofPos = [0, wallHeight, -depth / 2 - EAVE_OVERHANG];
-  const halfSpan = width / 2 + EAVE_OVERHANG;
+  const halfSpan = width / 2 + EAVE_OVERHANG + SIDE_OVERHANG;
   const rafterLen = Math.sqrt(halfSpan * halfSpan + roofPeak * roofPeak);
   const rafterAngle = Math.atan2(roofPeak, halfSpan);
   const numRafters = Math.floor(roofDepth / RAFTER_SPACING) + 1;
