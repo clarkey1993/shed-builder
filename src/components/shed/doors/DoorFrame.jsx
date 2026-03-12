@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import * as THREE from "three";
 import { Box, Cylinder } from "@react-three/drei";
 import { useConfigurator } from "../../../context/ConfiguratorContext";
 import { useShedTexturesContext } from "../../../context/ShedTextureContext";
@@ -13,8 +14,15 @@ const DOOR_BOARD_WIDTH = 4;
 const DOOR_BOARD_THICKNESS = 0.6;
 const DOOR_PANEL_Z = 0.35;
 const LIGHT_CEDAR = "#c89b6d";
+const COLOR_VARIATION = 0.05;
 
 const metalMat = <meshStandardMaterial color="#9ca3af" roughness={0.85} metalness={0.6} />;
+
+function variedCedarColor(index) {
+  const base = new THREE.Color(LIGHT_CEDAR);
+  const shade = 1 + (Math.sin(index * 2.3) * 0.5 + 0.5) * COLOR_VARIATION * 2 - COLOR_VARIATION;
+  return base.clone().multiplyScalar(shade).getStyle();
+}
 
 const DoorFrame = ({ doorType, wallHeight, trimMat }) => {
   const { wallHeightType } = useConfigurator();
@@ -34,15 +42,27 @@ const DoorFrame = ({ doorType, wallHeight, trimMat }) => {
     <meshStandardMaterial color={LIGHT_CEDAR} roughness={0.7} metalness={0.05} />
   );
 
-  const doorBoardMat = useMemo(() => {
-    const matProps = { roughness: 0.8, metalness: 0.05, color: LIGHT_CEDAR };
-    if (!woodCladding) return <meshStandardMaterial {...matProps} />;
-    const tex = woodCladding.clone();
-    tex.repeat.set(doorWidth / 24, doorHeight / 24);
-    if (!woodCladdingBump) return <meshStandardMaterial {...matProps} map={tex} />;
-    const bump = woodCladdingBump.clone();
-    bump.repeat.set(doorWidth / 24, doorHeight / 24);
-    return <meshStandardMaterial {...matProps} map={tex} bumpMap={bump} bumpScale={0.025} />;
+  const doorBoardMats = useMemo(() => {
+    const numBoards = Math.max(1, Math.ceil(doorWidth / DOOR_BOARD_WIDTH));
+    const mats = [];
+    for (let i = 0; i < numBoards; i++) {
+      const color = variedCedarColor(i);
+      const matProps = { roughness: 0.8, metalness: 0.05, color };
+      if (!woodCladding) {
+        mats.push(<meshStandardMaterial key={i} {...matProps} />);
+      } else {
+        const tex = woodCladding.clone();
+        tex.repeat.set(doorWidth / 24, doorHeight / 24);
+        if (!woodCladdingBump) {
+          mats.push(<meshStandardMaterial key={i} {...matProps} map={tex} />);
+        } else {
+          const bump = woodCladdingBump.clone();
+          bump.repeat.set(doorWidth / 24, doorHeight / 24);
+          mats.push(<meshStandardMaterial key={i} {...matProps} map={tex} bumpMap={bump} bumpScale={0.025} />);
+        }
+      }
+    }
+    return mats;
   }, [woodCladding, woodCladdingBump, doorWidth, doorHeight]);
 
   const trim = trimMat || framingMat;
@@ -70,7 +90,7 @@ const DoorFrame = ({ doorType, wallHeight, trimMat }) => {
           position={[x, doorCenterY, DOOR_PANEL_Z]}
           castShadow
         >
-          {doorBoardMat}
+          {doorBoardMats[i]}
         </Box>
       ))}
       <Box args={[doorWidth + STUD_WIDTH * 2, STUD_WIDTH * 2, STUD_THICKNESS]} position={[0, doorHeight / 2, 0]} castShadow>

@@ -42,11 +42,11 @@ function App() {
             >
               <ShedTextureProvider>
                 <color attach="background" args={["#EBE8E0"]} />
-                <Environment preset="studio" background={false} intensity={1.2} />
-                <ambientLight intensity={0.15} />
+                <Environment preset="sunset" background={false} />
+                <ambientLight intensity={0.12} />
                 <directionalLight
-                  position={[8, 15, 6]}
-                  intensity={0.3}
+                  position={[15, 20, 10]}
+                  intensity={1.4}
                   castShadow
                   shadow-mapSize-width={2048}
                   shadow-mapSize-height={2048}

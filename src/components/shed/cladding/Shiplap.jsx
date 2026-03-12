@@ -90,9 +90,9 @@ const Shiplap = ({
         new THREE.Vector3(inst.width, 1, 1)
       );
       mesh.setMatrixAt(i, m);
-      const offset = (Math.sin(i * 1.1) * 0.5 + 0.5) * COLOR_VARIATION * 2 - COLOR_VARIATION;
-      const shade = 1 + offset;
-      mesh.setColorAt(i, new THREE.Color(baseColor.r * shade, baseColor.g * shade, baseColor.b * shade));
+      const shade = 1 + (Math.random() - 0.5) * COLOR_VARIATION * 2;
+      const color = baseColor.clone().multiplyScalar(shade);
+      mesh.setColorAt(i, color);
     });
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
