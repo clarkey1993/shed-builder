@@ -39,6 +39,9 @@ const Wall = ({
 
   const showWallGrid = selectedElementId !== null && selectedElementId.startsWith(`window-${wallId}-`);
 
+  // Exterior = face toward camera for each step view; door/trim use +Z so front/right = +Z
+  const exteriorZSign = (wallId === "front" || wallId === "right") ? 1 : -1;
+
   const windowsForFraming = useMemo(
     () => windowPositions.map((x, i) => {
       const type = (windowTypes[wallId] || [])[i] || "STANDARD";
@@ -82,6 +85,7 @@ const Wall = ({
         doorHalfWidth={doorHalfWidth}
         doorHeight={doorDims?.height}
         claddingOpacity={claddingOpacity}
+        exteriorZSign={exteriorZSign}
       />
 
       {showFraming && (

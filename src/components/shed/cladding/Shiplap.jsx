@@ -13,6 +13,8 @@ const OVERLAP = 0.12;
 const LIGHT_CEDAR = "#f5e0b8"; // Diagnostic: very light warm timber (prefer obviously wooden)
 const COLOR_VARIATION = 0.05;
 
+const CLADDING_OFFSET = 0.2;
+
 const Shiplap = ({
   width,
   height,
@@ -21,6 +23,7 @@ const Shiplap = ({
   doorHalfWidth,
   doorHeight,
   claddingOpacity = 1,
+  exteriorZSign = 1, // +1 = exterior at +Z, -1 = exterior at -Z (per wall rotation)
 }) => {
   const claddingRef = useRef();
   const plateThickness = 1.5;
@@ -78,10 +81,11 @@ const Shiplap = ({
     const mesh = claddingRef.current;
     if (!mesh) return;
     const baseColor = new THREE.Color(LIGHT_CEDAR);
+    const claddingZ = exteriorZSign * (BOARD_THICKNESS / 2 + CLADDING_OFFSET);
     flatCladdingInstances.forEach((inst, i) => {
       // CUMULATIVE ROW DEPTH REMOVED
       m.compose(
-        new THREE.Vector3(inst.x, inst.y, BOARD_THICKNESS / 2 + 0.2),
+        new THREE.Vector3(inst.x, inst.y, claddingZ),
         new THREE.Quaternion(),
         new THREE.Vector3(inst.width, 1, 1)
       );
@@ -92,7 +96,7 @@ const Shiplap = ({
     });
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  }, [flatCladdingInstances]);
+  }, [flatCladdingInstances, exteriorZSign]);
 
   const claddingMat = useMemo(() => {
     const matProps = {
