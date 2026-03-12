@@ -8,12 +8,12 @@ import { useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { useBuilder } from "../../context/BuilderContext";
 
-// Product-style framing: slightly above eye level, front 3/4, shed as main subject
+// Product-style framing: front wall at -Z, back at +Z; camera faces the wall being edited
 const STEP_CAMERAS = {
   BASE: { position: [6, 5, 6], target: [0, 2.5, 0] },
-  FRONT_WALL: { position: [0, 5, 8], target: [0, 2.5, 0] },
-  SIDE_WALLS: { position: [9, 5, 0], target: [0, 2.5, 0] },
-  BACK_WALL: { position: [0, 5, -8], target: [0, 2.5, 0] },
+  FRONT_WALL: { position: [0, 5, -10], target: [0, 2.5, 0] },
+  SIDE_WALLS: { position: [14, 5, 0], target: [0, 2.5, 0] },
+  BACK_WALL: { position: [0, 5, 10], target: [0, 2.5, 0] },
   ROOF: { position: [8, 10, 8], target: [0, 3.5, 0] },
   INTERIOR: { position: [5, 5, 5], target: [0, 2.5, 0] },
 };

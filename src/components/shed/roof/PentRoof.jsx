@@ -5,7 +5,7 @@ import { useShedTexturesContext } from "../../../context/ShedTextureContext";
 import shedData from "../../../shedData.json";
 
 const EAVE_OVERHANG = 4;
-const SIDE_OVERHANG = 2;
+const SIDE_OVERHANG = 4;
 const FASCIA_HEIGHT = 5;
 const FASCIA_THICKNESS = 1;
 const RAFTER_SPACING = 24;

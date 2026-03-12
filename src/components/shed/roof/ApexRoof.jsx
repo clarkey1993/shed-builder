@@ -5,7 +5,7 @@ import { useConfigurator } from "../../../context/ConfiguratorContext";
 import { useShedTexturesContext } from "../../../context/ShedTextureContext";
 
 const EAVE_OVERHANG = 4;
-const SIDE_OVERHANG = 2;
+const SIDE_OVERHANG = 4; // Visible past side walls; shape X = left/right eave extent
 const FASCIA_HEIGHT = 5;
 const FASCIA_THICKNESS = 1;
 const RIDGE_CAP_WIDTH = 4;
