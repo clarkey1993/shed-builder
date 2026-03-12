@@ -8,13 +8,14 @@ import { useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { useBuilder } from "../../context/BuilderContext";
 
+// Product-style framing: slightly above eye level, front 3/4, shed as main subject
 const STEP_CAMERAS = {
-  BASE: { position: [8, 3, 8], target: [0, 0, 0] },
-  FRONT_WALL: { position: [0, 4, 10], target: [0, 2, 0] },
-  SIDE_WALLS: { position: [10, 4, 0], target: [0, 2, 0] },
-  BACK_WALL: { position: [0, 4, -10], target: [0, 2, 0] },
-  ROOF: { position: [10, 8, 10], target: [0, 3, 0] },
-  INTERIOR: { position: [6, 4, 6], target: [0, 2, 0] },
+  BASE: { position: [6, 5, 6], target: [0, 2.5, 0] },
+  FRONT_WALL: { position: [0, 5, 8], target: [0, 2.5, 0] },
+  SIDE_WALLS: { position: [9, 5, 0], target: [0, 2.5, 0] },
+  BACK_WALL: { position: [0, 5, -8], target: [0, 2.5, 0] },
+  ROOF: { position: [8, 10, 8], target: [0, 3.5, 0] },
+  INTERIOR: { position: [5, 5, 5], target: [0, 2.5, 0] },
 };
 
 export default function CameraController() {
@@ -36,7 +37,7 @@ export default function CameraController() {
       makeDefault
       minDistance={4}
       maxDistance={25}
-      target={[0, 2, 0]}
+      target={[0, 2.5, 0]}
       enablePan
       enabled={!isDraggingElement}
     />

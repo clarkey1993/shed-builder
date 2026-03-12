@@ -14,7 +14,7 @@ import DebugDimensionLabels from "./components/shed/DebugDimensionLabels";
 import { ShedTextureProvider } from "./context/ShedTextureContext";
 import DebugToggle from "./components/ui/DebugToggle";
 
-const CAMERA_POSITION = [12, 1.2, 12];
+const CAMERA_POSITION = [6, 5, 6]; // Product 3/4 view, slightly above eye level
 
 function App() {
   const [imageUrl, setImageUrl] = useState(null);
@@ -35,7 +35,7 @@ function App() {
             style={{ boxShadow: "0 2px 20px rgba(0,0,0,0.06)" }}
           >
             <Canvas
-              camera={{ position: CAMERA_POSITION, fov: 45 }}
+              camera={{ position: CAMERA_POSITION, fov: 42 }}
               className={`w-full h-full ${imageUrl ? "bg-transparent" : ""}`}
               style={{ background: imageUrl ? "transparent" : "#EBE8E0" }}
               shadows
