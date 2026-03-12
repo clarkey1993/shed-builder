@@ -12,8 +12,6 @@ import Shiplap from "../cladding/Shiplap";
 import WallFraming from "../framing/WallFraming";
 
 const WARM_CEDAR = "#e0b890";
-/** Offset framing toward interior from wall plane (opposite side of cladding) */
-const FRAMING_INTERIOR_OFFSET = 1;
 
 const Wall = ({
   wallId,
@@ -27,7 +25,6 @@ const Wall = ({
   claddingOpacity = 1,
   exteriorZSign = 1,
 }) => {
-  const framingZOffset = -exteriorZSign * FRAMING_INTERIOR_OFFSET;
   const wallGroupRef = useRef();
   const dragPlaneRef = useRef();
   const { shedConfig, setWindowPosition, windowTypes = {}, wallHeightType } = useConfigurator();
@@ -39,6 +36,7 @@ const Wall = ({
     : null;
   const doorHalfWidth = doorDims ? doorDims.width / 2 : 0;
   const plateThickness = shedConfig.framing.upright_middles_thickness_x;
+  const framingZOffset = -exteriorZSign * (plateThickness / 2 + 0.75);
   const trimMat = <meshStandardMaterial color={WARM_CEDAR} roughness={0.75} metalness={0.02} />;
 
   const showWallGrid = selectedElementId !== null && selectedElementId.startsWith(`window-${wallId}-`);
@@ -70,15 +68,15 @@ const Wall = ({
         />
       </mesh>
 
-      {/* Framing (plates + studs) on interior face */}
-      <group position={[0, 0, framingZOffset]}>
-        <Box args={[width, plateThickness, plateThickness]} position={[0, height / 2 - plateThickness / 2, 0]} castShadow>
-          {woodFraming ? <meshStandardMaterial map={woodFraming} roughness={0.7} metalness={0} color="#8b4513" /> : <meshStandardMaterial color="#8B4513" roughness={0.7} />}
-        </Box>
-        <Box args={[width, plateThickness, plateThickness]} position={[0, -height / 2 + plateThickness / 2, 0]} castShadow>
-          {woodFraming ? <meshStandardMaterial map={woodFraming} roughness={0.7} metalness={0} color="#8b4513" /> : <meshStandardMaterial color="#8B4513" roughness={0.7} />}
-        </Box>
-        {showFraming && (
+      {/* Framing overlay: plates + studs on interior face, only when showFraming */}
+      {showFraming && (
+        <group position={[0, 0, framingZOffset]}>
+          <Box args={[width, plateThickness, plateThickness]} position={[0, height / 2 - plateThickness / 2, 0]} castShadow>
+            {woodFraming ? <meshStandardMaterial map={woodFraming} roughness={0.7} metalness={0} color="#8b4513" /> : <meshStandardMaterial color="#8B4513" roughness={0.7} />}
+          </Box>
+          <Box args={[width, plateThickness, plateThickness]} position={[0, -height / 2 + plateThickness / 2, 0]} castShadow>
+            {woodFraming ? <meshStandardMaterial map={woodFraming} roughness={0.7} metalness={0} color="#8b4513" /> : <meshStandardMaterial color="#8B4513" roughness={0.7} />}
+          </Box>
           <WallFraming
             wallWidth={width}
             wallHeight={height}
@@ -86,8 +84,8 @@ const Wall = ({
             doors={doorsForFraming}
             framingConfig={shedConfig.framing}
           />
-        )}
-      </group>
+        </group>
+      )}
 
       <Shiplap
         width={width}
