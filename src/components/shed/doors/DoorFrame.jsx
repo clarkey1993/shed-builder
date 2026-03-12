@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Box, Cylinder } from "@react-three/drei";
 import { useConfigurator } from "../../../context/ConfiguratorContext";
 import { useShedTexturesContext } from "../../../context/ShedTextureContext";
-import shedData from "../../../shedData.json";
+import { getDoorDimensions } from "../../../systems/framing/getOpeningDimensions";
 
 const STUD_THICKNESS = 2;
 const STUD_WIDTH = 3;
@@ -19,8 +19,11 @@ const metalMat = <meshStandardMaterial color="#9ca3af" roughness={0.85} metalnes
 const DoorFrame = ({ doorType, wallHeight, trimMat }) => {
   const { wallHeightType } = useConfigurator();
   const { woodFraming, woodCladding } = useShedTexturesContext();
-  const doorWidth = shedData.door_widths[doorType][wallHeightType];
-  const doorHeight = wallHeight;
+  const { width: doorWidth, height: doorHeight } = getDoorDimensions({
+    doorType,
+    wallHeightType: wallHeightType || "standard",
+    wallHeight,
+  });
   const doorTop = -wallHeight / 2 + doorHeight;
   const doorBottom = -wallHeight / 2;
   const doorCenterY = -wallHeight / 2 + doorHeight / 2;
