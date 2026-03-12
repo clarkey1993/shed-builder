@@ -8,10 +8,9 @@ import * as THREE from "three";
 import { RoundedBoxGeometry } from "@react-three/drei";
 const BOARD_HEIGHT = 5;
 const VISIBLE_COVERAGE = 4;
-const BOARD_THICKNESS = 0.5; // Diagnostic: thinner = less shadow; minimal groove
+const BOARD_THICKNESS = 0.6; // Board thickness for believable log-lap
 const OVERLAP = 0.12;
-const ROW_DEPTH_OFFSET = 0.01; // Diagnostic: near-flat to remove heavy dark banding
-const ROW_DEPTH_CAP = 0.05; // Diagnostic: cap keeps overlap line but no striping
+const STUD_OFFSET = 0.2; // Boards sit in front of stud plane
 const LIGHT_CEDAR = "#f5e0b8"; // Diagnostic: very light warm timber (prefer obviously wooden)
 const COLOR_VARIATION = 0.05;
 
@@ -81,10 +80,8 @@ const Shiplap = ({
     if (!mesh) return;
     const baseColor = new THREE.Color(LIGHT_CEDAR);
     flatCladdingInstances.forEach((inst, i) => {
-      const rawDepth = inst.rowIndex * ROW_DEPTH_OFFSET;
-      const depthOff = Math.min(rawDepth, ROW_DEPTH_CAP);
       m.compose(
-        new THREE.Vector3(inst.x, inst.y, -BOARD_THICKNESS / 2 - 0.2 - depthOff),
+        new THREE.Vector3(inst.x, inst.y, -BOARD_THICKNESS / 2 - STUD_OFFSET),
         new THREE.Quaternion(),
         new THREE.Vector3(inst.width, 1, 1)
       );
