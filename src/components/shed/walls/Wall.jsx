@@ -39,8 +39,8 @@ const Wall = ({
 
   const showWallGrid = selectedElementId !== null && selectedElementId.startsWith(`window-${wallId}-`);
 
-  // Exterior = face toward camera for each step view; door/trim use +Z so front/right = +Z
-  const exteriorZSign = (wallId === "front" || wallId === "right") ? 1 : -1;
+  // All walls face outward; exterior is local +Z (away from shed center)
+  const exteriorZSign = 1;
 
   const windowsForFraming = useMemo(
     () => windowPositions.map((x, i) => {
