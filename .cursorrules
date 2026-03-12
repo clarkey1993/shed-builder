@@ -1,0 +1,112 @@
+# Shed Configurator – AI Agent Rules
+
+This project is a 3D Bramwood shed configurator. Follow these rules to work efficiently and avoid unnecessary changes.
+
+---
+
+## 1. Project Purpose
+
+- 3D Bramwood shed configurator for designing shed structure only
+- Covers: shed size, roof type, wall-by-wall openings, internal partitions, framing visualization, cladding, roof
+- **Not** an interior furnishing planner unless explicitly requested
+- No furniture, shelves, or workbenches
+
+---
+
+## 2. Files to Read First
+
+Before making changes, read:
+
+- `docs/PROJECT_ARCHITECTURE.md`
+- `docs/SYSTEM_MAP.md`
+- `docs/BUILD_RULES.md`
+- `docs/DEVELOPMENT_GUIDELINES.md`
+
+---
+
+## 3. Protected Systems
+
+Do **not** modify unless explicitly requested:
+
+- ConfiguratorContext core dimension logic
+- shedData.json structure
+- builderStep workflow
+- Existing window drag behavior
+- Existing door drag behavior
+- Camera control behavior
+- Core shed dimension math
+
+---
+
+## 4. Bramwood Defaults
+
+| Rule | Value |
+|------|-------|
+| Apex standard wall height | 66" |
+| Apex workshop wall height | 70" |
+| Pent back wall | 70" |
+| Pent front wall | 70" + shed depth (feet) |
+| Standard window | 24" × 24" |
+| Security window | 24" × 12" |
+| Single door clear opening | 27" |
+| Double door opening | 60" |
+| Stud spacing | 24" |
+| Noggins | ~36" vertically |
+| Cladding | Horizontal shiplap |
+| Board width | 5" |
+| Visible coverage | ~4" |
+
+---
+
+## 5. Interaction Rules
+
+- Windows must be draggable on all walls from either side
+- Openings snap to 6" grid
+- Stud assist can use 24" spacing
+- Camera / orbit controls must lock during active dragging
+- Wall grid appears only during selection/drag and disappears when cleared
+
+---
+
+## 6. Rendering Rules
+
+- Use the live mounted render path
+- Do not add unused replacement components
+- Confirm the real render chain before broad visual changes
+
+---
+
+## 7. Performance Rules
+
+- No heavy work every frame
+- Do not reset camera every frame
+- Use `useMemo` for geometry and layout
+- Prefer `InstancedMesh` for repeated framing elements
+
+---
+
+## 8. Preferred Change Style
+
+- Audit before modifying
+- Prefer the smallest safe change
+- Isolate changes by system
+- Prefer shared helpers over hardcoded dimensions
+- Prioritize stability
+
+---
+
+## 9. Documentation Behavior
+
+- Update the docs folder if architecture changes significantly
+- Do not document features that are not in the code
+
+---
+
+## 10. Current Priorities
+
+1. Keep the configurator stable
+2. Preserve working drag behavior
+3. Match openings to Bramwood rules
+4. Improve realism
+5. Improve framing accuracy
+6. Improve maintainability
