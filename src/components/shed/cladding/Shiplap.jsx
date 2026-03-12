@@ -8,10 +8,10 @@ import * as THREE from "three";
 import { RoundedBoxGeometry } from "@react-three/drei";
 const BOARD_HEIGHT = 5;
 const VISIBLE_COVERAGE = 4;
-const BOARD_THICKNESS = 0.9; // Visible timber thickness for log-lap profile
+const BOARD_THICKNESS = 0.7; // Timber thickness; reduced to limit shadow depth
 const OVERLAP = 0.12;
-const ROW_DEPTH_OFFSET = 0.1; // Subtle depth for shadow lines, avoid deep black striping
-const LIGHT_CEDAR = "#d4a574"; // Warm timber cedar/tan, dominant visible colour
+const ROW_DEPTH_OFFSET = 0.06; // Subtle depth, avoid deep black grooves
+const LIGHT_CEDAR = "#e0b890"; // Warm timber, lighter so it reads clearly
 const COLOR_VARIATION = 0.05;
 
 const Shiplap = ({
@@ -87,7 +87,7 @@ const Shiplap = ({
         new THREE.Vector3(inst.width, 1, 1)
       );
       mesh.setMatrixAt(i, m);
-      const shade = 1 + (Math.random() - 0.5) * COLOR_VARIATION * 2;
+      const shade = 1.02 + (Math.random() - 0.5) * COLOR_VARIATION * 2; // Bias brighter
       const color = baseColor.clone().multiplyScalar(shade);
       mesh.setColorAt(i, color);
     });
@@ -112,7 +112,7 @@ const Shiplap = ({
 
   return (
     <instancedMesh ref={claddingRef} args={[null, null, flatCladdingInstances.length]} castShadow receiveShadow>
-      <RoundedBoxGeometry attach="geometry" args={[1, VISIBLE_COVERAGE, BOARD_THICKNESS]} radius={0.5} smoothness={4} />
+      <RoundedBoxGeometry attach="geometry" args={[1, VISIBLE_COVERAGE, BOARD_THICKNESS]} radius={0.35} smoothness={4} />
       {claddingMat}
     </instancedMesh>
   );

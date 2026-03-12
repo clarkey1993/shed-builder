@@ -100,9 +100,9 @@ function createRoofTexture(width = 256, height = 256) {
   for (let i = 0; i < img.data.length; i += 4) {
     const x = (i / 4) % width;
     const y = Math.floor(i / 4 / width);
-    const grain = Math.sin(x * 0.12) * 0.04 + Math.sin(y * 0.18) * 0.04;
-    const fibre = (Math.sin(x * 1.5 + y * 1.0) * 0.5 + 0.5) * 0.08;
-    const v = 0.86 + grain + fibre + (Math.random() - 0.5) * 0.06;
+    const grain = Math.sin(x * 0.1) * 0.05 + Math.sin(y * 0.15) * 0.05;
+    const fibre = (Math.sin(x * 1.2 + y * 0.9) * 0.5 + 0.5) * 0.1;
+    const v = 0.82 + grain + fibre + (Math.random() - 0.5) * 0.08;
     const s = Math.min(1.02, Math.max(0.95, v));
     img.data[i] = Math.min(255, Math.max(0, base[0] * s));
     img.data[i + 1] = Math.min(255, Math.max(0, base[1] * s));

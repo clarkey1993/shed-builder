@@ -13,7 +13,7 @@ const RAFTER_T = 3;
 
 const PentRoof = ({ width: floorWidth, depth: floorDepth, opacity = 1, showFraming = false }) => {
   const { size, wallHeightType } = useConfigurator();
-  const { roofFelt, woodFraming } = useShedTexturesContext();
+  const { roofFelt } = useShedTexturesContext();
 
   const wallHeight = shedData.wall_heights[wallHeightType];
   const frontHeight = shedData.pent_roof_dims[size.width]?.front || (wallHeight + 6);
@@ -39,12 +39,8 @@ const PentRoof = ({ width: floorWidth, depth: floorDepth, opacity = 1, showFrami
     return <meshStandardMaterial {...matProps} map={tex} />;
   }, [roofFelt, floorWidth, floorDepth, opacity]);
 
-  const WARM_CEDAR = "#d4a574";
-  const fasciaMat = woodFraming ? (
-    <meshStandardMaterial map={woodFraming} roughness={0.75} metalness={0.05} color={WARM_CEDAR} transparent={opacity < 1} opacity={opacity} depthWrite={opacity >= 1} />
-  ) : (
-    <meshStandardMaterial color={WARM_CEDAR} roughness={0.75} metalness={0.05} transparent={opacity < 1} opacity={opacity} depthWrite={opacity >= 1} />
-  );
+  const WARM_CEDAR = "#e0b890";
+  const fasciaMat = <meshStandardMaterial color={WARM_CEDAR} roughness={0.75} metalness={0.02} transparent={opacity < 1} opacity={opacity} depthWrite={opacity >= 1} />;
 
   const roofW = floorWidth + EAVE_OVERHANG * 2;
   const roofD = floorDepth + EAVE_OVERHANG * 2;

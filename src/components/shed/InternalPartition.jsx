@@ -62,7 +62,7 @@ const InternalPartition = ({ partition, floorWidth, floorDepth, wallHeight }) =>
     return positions;
   }, [length, hasDoor, doorOffset, doorWidth]);
 
-  const WARM_CEDAR = "#d4a574";
+  const WARM_CEDAR = "#e0b890";
   const claddingMat = useMemo(() => {
     if (!woodCladding) return <meshStandardMaterial color={WARM_CEDAR} roughness={0.75} metalness={0.02} />;
     const tex = woodCladding.clone();

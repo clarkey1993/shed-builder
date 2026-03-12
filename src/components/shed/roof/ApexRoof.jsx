@@ -16,7 +16,7 @@ const RAFTER_T = 3;
 
 const ApexRoof = ({ width, depth, opacity = 1, showFraming = false }) => {
   const { shedConfig } = useConfigurator();
-  const { roofFelt, woodFraming } = useShedTexturesContext();
+  const { roofFelt } = useShedTexturesContext();
 
   const wallHeight = shedConfig.wallHeight;
   const totalHeight = shedConfig.roofPeakHeight;
@@ -52,12 +52,8 @@ const ApexRoof = ({ width, depth, opacity = 1, showFraming = false }) => {
     return <meshStandardMaterial {...matProps} map={tex} />;
   }, [roofFelt, roofWidth, roofDepth, opacity]);
 
-  const WARM_CEDAR = "#d4a574";
-  const fasciaMat = woodFraming ? (
-    <meshStandardMaterial map={woodFraming} roughness={0.75} metalness={0.05} color={WARM_CEDAR} transparent={opacity < 1} opacity={opacity} depthWrite={opacity >= 1} />
-  ) : (
-    <meshStandardMaterial color={WARM_CEDAR} roughness={0.75} metalness={0.05} transparent={opacity < 1} opacity={opacity} depthWrite={opacity >= 1} />
-  );
+  const WARM_CEDAR = "#e0b890";
+  const fasciaMat = <meshStandardMaterial color={WARM_CEDAR} roughness={0.75} metalness={0.02} transparent={opacity < 1} opacity={opacity} depthWrite={opacity >= 1} />;
 
   const roofPos = [0, wallHeight, -depth / 2 - EAVE_OVERHANG];
   const halfSpan = width / 2 + EAVE_OVERHANG;

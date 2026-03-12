@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import * as THREE from "three";
 import { Box, Cylinder } from "@react-three/drei";
 import { useConfigurator } from "../../../context/ConfiguratorContext";
-import { useShedTexturesContext } from "../../../context/ShedTextureContext";
 import { getDoorDimensions } from "../../../systems/openings/getOpeningDimensions";
 
 const STUD_THICKNESS = 2;
@@ -13,20 +12,19 @@ const TRIM_OFFSET = 0.5;
 const DOOR_BOARD_WIDTH = 4;
 const DOOR_BOARD_THICKNESS = 0.6;
 const DOOR_PANEL_Z = 0.35;
-const LIGHT_CEDAR = "#d4a574"; // Warm timber tone, matches shed cladding
+const LIGHT_CEDAR = "#e0b890"; // Warm timber, matches wall cladding
 const COLOR_VARIATION = 0.05;
 
 const metalMat = <meshStandardMaterial color="#9ca3af" roughness={0.85} metalness={0.6} />;
 
 function variedCedarColor(index) {
   const base = new THREE.Color(LIGHT_CEDAR);
-  const shade = 1 + (Math.sin(index * 2.3) * 0.5 + 0.5) * COLOR_VARIATION * 2 - COLOR_VARIATION;
+  const shade = 1.02 + (Math.sin(index * 2.3) * 0.5 + 0.5) * COLOR_VARIATION * 2 - COLOR_VARIATION;
   return base.clone().multiplyScalar(shade).getStyle();
 }
 
 const DoorFrame = ({ doorType, wallHeight, trimMat }) => {
   const { wallHeightType } = useConfigurator();
-  const { woodFraming } = useShedTexturesContext();
   const { width: doorWidth, height: doorHeight } = getDoorDimensions({
     doorType,
     wallHeightType: wallHeightType || "standard",
@@ -36,11 +34,8 @@ const DoorFrame = ({ doorType, wallHeight, trimMat }) => {
   const doorBottom = -wallHeight / 2;
   const doorCenterY = -wallHeight / 2 + doorHeight / 2;
 
-  const framingMat = woodFraming ? (
-    <meshStandardMaterial map={woodFraming} roughness={0.75} metalness={0.02} color={LIGHT_CEDAR} />
-  ) : (
-    <meshStandardMaterial color={LIGHT_CEDAR} roughness={0.75} metalness={0.02} />
-  );
+  // Color-only framing to match wall timber; texture was darkening
+  const framingMat = <meshStandardMaterial color={LIGHT_CEDAR} roughness={0.75} metalness={0.02} />;
 
   const doorBoardMats = useMemo(() => {
     const numBoards = Math.max(1, Math.ceil(doorWidth / DOOR_BOARD_WIDTH));
