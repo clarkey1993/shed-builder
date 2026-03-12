@@ -8,7 +8,7 @@ import { useConfigurator } from "../../context/ConfiguratorContext";
 import { useShedTexturesContext } from "../../context/ShedTextureContext";
 import { getDoorDimensions } from "../../systems/openings/getOpeningDimensions";
 
-const WARM_CEDAR = "#c89b6d";
+const WARM_CEDAR = "#d4a574";
 const STUD_WIDTH = 3;
 const TRIM_W = 2;
 const TRIM_T = 1;

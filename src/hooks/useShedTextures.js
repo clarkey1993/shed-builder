@@ -100,9 +100,9 @@ function createRoofTexture(width = 256, height = 256) {
   for (let i = 0; i < img.data.length; i += 4) {
     const x = (i / 4) % width;
     const y = Math.floor(i / 4 / width);
-    const grain = Math.sin(x * 0.15) * 0.03 + Math.sin(y * 0.2) * 0.03;
-    const fibre = (Math.sin(x * 1.2 + y * 0.8) * 0.5 + 0.5) * 0.06;
-    const v = 0.88 + grain + fibre + (Math.random() - 0.5) * 0.04;
+    const grain = Math.sin(x * 0.12) * 0.04 + Math.sin(y * 0.18) * 0.04;
+    const fibre = (Math.sin(x * 1.5 + y * 1.0) * 0.5 + 0.5) * 0.08;
+    const v = 0.86 + grain + fibre + (Math.random() - 0.5) * 0.06;
     const s = Math.min(1.02, Math.max(0.95, v));
     img.data[i] = Math.min(255, Math.max(0, base[0] * s));
     img.data[i + 1] = Math.min(255, Math.max(0, base[1] * s));
@@ -140,9 +140,9 @@ function createOSBTexture(width = 128, height = 128) {
 
 export function useShedTextures() {
   return useMemo(() => {
-    const woodCladding = createShiplapTexture(256, 256, { baseColor: "#B5651D", gapColor: "#8b5a2b", plankWidth: 24 });
+    const woodCladding = createShiplapTexture(256, 256, { baseColor: "#d4a574", gapColor: "#b89870", plankWidth: 24 });
     const woodCladdingBump = createWoodBumpTexture(256, 256, 24, 20);
-    const woodFraming = createWoodTexture(128, 128, { baseColor: "#8b6914", gapColor: "#5c4033", plankHeight: 16 });
+    const woodFraming = createWoodTexture(128, 128, { baseColor: "#b8926a", gapColor: "#8b7355", plankHeight: 16 });
     const roofFelt = createRoofTexture(128, 128);
     const osb = createOSBTexture(128, 128);
     return {

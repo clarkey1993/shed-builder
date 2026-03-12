@@ -6,14 +6,12 @@
 import { useMemo, useRef, useEffect } from "react";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "@react-three/drei";
-import { useShedTexturesContext } from "../../../context/ShedTextureContext";
-
 const BOARD_HEIGHT = 5;
 const VISIBLE_COVERAGE = 4;
 const BOARD_THICKNESS = 0.9; // Visible timber thickness for log-lap profile
 const OVERLAP = 0.12;
-const ROW_DEPTH_OFFSET = 0.18; // Depth stagger for clear shadow lines between rows
-const LIGHT_CEDAR = "#c89b6d";
+const ROW_DEPTH_OFFSET = 0.1; // Subtle depth for shadow lines, avoid deep black striping
+const LIGHT_CEDAR = "#d4a574"; // Warm timber cedar/tan, dominant visible colour
 const COLOR_VARIATION = 0.05;
 
 const Shiplap = ({
@@ -26,7 +24,6 @@ const Shiplap = ({
   claddingOpacity = 1,
 }) => {
   const claddingRef = useRef();
-  const { woodCladding, woodCladdingBump } = useShedTexturesContext();
   const plateThickness = 1.5;
   const studHeight = height - plateThickness * 2;
   // Fallback only when callers omit doorHeight (e.g. malformed props). Normal path: Wall passes doorDims.height.
@@ -101,19 +98,15 @@ const Shiplap = ({
   const claddingMat = useMemo(() => {
     const matProps = {
       color: LIGHT_CEDAR,
-      roughness: 0.7,
-      metalness: 0.1,
+      roughness: 0.75,
+      metalness: 0.02,
       transparent: claddingOpacity < 1,
       opacity: claddingOpacity,
       vertexColors: true,
     };
-    if (!woodCladding) return <meshStandardMaterial {...matProps} />;
-    const tex = woodCladding.clone();
-    tex.repeat.set(width / 24, studHeight / 24);
-    const bump = woodCladdingBump?.clone();
-    if (bump) bump.repeat.set(width / 24, studHeight / 24);
-    return <meshStandardMaterial {...matProps} map={tex} bumpMap={bump} bumpScale={0.02} />;
-  }, [woodCladding, woodCladdingBump, studHeight, width, claddingOpacity]);
+    // Color-dominated for warm timber; texture was darkening boards too much
+    return <meshStandardMaterial {...matProps} />;
+  }, [claddingOpacity]);
 
   if (flatCladdingInstances.length === 0) return null;
 

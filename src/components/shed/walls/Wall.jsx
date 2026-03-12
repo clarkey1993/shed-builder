@@ -11,7 +11,7 @@ import WallGrid from "../grid/WallGrid";
 import Shiplap from "../cladding/Shiplap";
 import WallFraming from "../framing/WallFraming";
 
-const WARM_CEDAR = "#c89b6d";
+const WARM_CEDAR = "#d4a574";
 
 const Wall = ({
   wallId,

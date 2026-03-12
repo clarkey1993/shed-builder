@@ -62,17 +62,18 @@ const InternalPartition = ({ partition, floorWidth, floorDepth, wallHeight }) =>
     return positions;
   }, [length, hasDoor, doorOffset, doorWidth]);
 
+  const WARM_CEDAR = "#d4a574";
   const claddingMat = useMemo(() => {
-    if (!woodCladding) return <meshStandardMaterial color="#B5651D" roughness={0.7} metalness={0} />;
+    if (!woodCladding) return <meshStandardMaterial color={WARM_CEDAR} roughness={0.75} metalness={0.02} />;
     const tex = woodCladding.clone();
     tex.repeat.set(length / 24, studHeight / 24);
-    return <meshStandardMaterial map={tex} roughness={0.7} metalness={0} color="#B5651D" />;
+    return <meshStandardMaterial map={tex} roughness={0.75} metalness={0.02} color={WARM_CEDAR} />;
   }, [woodCladding, studHeight, length]);
 
   const framingMat = woodFraming ? (
-    <meshStandardMaterial map={woodFraming} roughness={0.7} metalness={0} color="#8b4513" />
+    <meshStandardMaterial map={woodFraming} roughness={0.75} metalness={0.02} color={WARM_CEDAR} />
   ) : (
-    <meshStandardMaterial color="#8B4513" roughness={0.7} />
+    <meshStandardMaterial color={WARM_CEDAR} roughness={0.75} />
   );
 
   return (

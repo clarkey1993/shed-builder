@@ -52,7 +52,7 @@ const ApexRoof = ({ width, depth, opacity = 1, showFraming = false }) => {
     return <meshStandardMaterial {...matProps} map={tex} />;
   }, [roofFelt, roofWidth, roofDepth, opacity]);
 
-  const WARM_CEDAR = "#c89b6d";
+  const WARM_CEDAR = "#d4a574";
   const fasciaMat = woodFraming ? (
     <meshStandardMaterial map={woodFraming} roughness={0.75} metalness={0.05} color={WARM_CEDAR} transparent={opacity < 1} opacity={opacity} depthWrite={opacity >= 1} />
   ) : (

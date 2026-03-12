@@ -13,7 +13,7 @@ const TRIM_OFFSET = 0.5;
 const DOOR_BOARD_WIDTH = 4;
 const DOOR_BOARD_THICKNESS = 0.6;
 const DOOR_PANEL_Z = 0.35;
-const LIGHT_CEDAR = "#c89b6d";
+const LIGHT_CEDAR = "#d4a574"; // Warm timber tone, matches shed cladding
 const COLOR_VARIATION = 0.05;
 
 const metalMat = <meshStandardMaterial color="#9ca3af" roughness={0.85} metalness={0.6} />;
@@ -26,7 +26,7 @@ function variedCedarColor(index) {
 
 const DoorFrame = ({ doorType, wallHeight, trimMat }) => {
   const { wallHeightType } = useConfigurator();
-  const { woodFraming, woodCladding, woodCladdingBump } = useShedTexturesContext();
+  const { woodFraming } = useShedTexturesContext();
   const { width: doorWidth, height: doorHeight } = getDoorDimensions({
     doorType,
     wallHeightType: wallHeightType || "standard",
@@ -37,9 +37,9 @@ const DoorFrame = ({ doorType, wallHeight, trimMat }) => {
   const doorCenterY = -wallHeight / 2 + doorHeight / 2;
 
   const framingMat = woodFraming ? (
-    <meshStandardMaterial map={woodFraming} roughness={0.7} metalness={0.05} color={LIGHT_CEDAR} />
+    <meshStandardMaterial map={woodFraming} roughness={0.75} metalness={0.02} color={LIGHT_CEDAR} />
   ) : (
-    <meshStandardMaterial color={LIGHT_CEDAR} roughness={0.7} metalness={0.05} />
+    <meshStandardMaterial color={LIGHT_CEDAR} roughness={0.75} metalness={0.02} />
   );
 
   const doorBoardMats = useMemo(() => {
@@ -47,23 +47,10 @@ const DoorFrame = ({ doorType, wallHeight, trimMat }) => {
     const mats = [];
     for (let i = 0; i < numBoards; i++) {
       const color = variedCedarColor(i);
-      const matProps = { roughness: 0.8, metalness: 0.05, color };
-      if (!woodCladding) {
-        mats.push(<meshStandardMaterial key={i} {...matProps} />);
-      } else {
-        const tex = woodCladding.clone();
-        tex.repeat.set(doorWidth / 24, doorHeight / 24);
-        if (!woodCladdingBump) {
-          mats.push(<meshStandardMaterial key={i} {...matProps} map={tex} />);
-        } else {
-          const bump = woodCladdingBump.clone();
-          bump.repeat.set(doorWidth / 24, doorHeight / 24);
-          mats.push(<meshStandardMaterial key={i} {...matProps} map={tex} bumpMap={bump} bumpScale={0.025} />);
-        }
-      }
+      mats.push(<meshStandardMaterial key={i} roughness={0.75} metalness={0.02} color={color} />);
     }
     return mats;
-  }, [woodCladding, woodCladdingBump, doorWidth, doorHeight]);
+  }, [doorWidth, doorHeight]);
 
   const trim = trimMat || framingMat;
   const fullW = doorWidth + STUD_WIDTH * 2 + TRIM_OFFSET * 2;
