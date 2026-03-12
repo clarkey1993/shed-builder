@@ -5,8 +5,8 @@ import { useConfigurator } from "../../../context/ConfiguratorContext";
 import { useShedTexturesContext } from "../../../context/ShedTextureContext";
 
 const EAVE_OVERHANG = 4;
-const FASCIA_HEIGHT = 4;
-const FASCIA_THICKNESS = 0.75;
+const FASCIA_HEIGHT = 5;
+const FASCIA_THICKNESS = 1;
 const RIDGE_CAP_WIDTH = 4;
 const FINIAL_H = 6;
 const FINIAL_R = 2;

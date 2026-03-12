@@ -8,7 +8,7 @@ import InternalPartition from "./InternalPartition";
 import { useShedTexturesContext } from "../../context/ShedTextureContext";
 
 const CORNER_TRIM_WIDTH = 3;
-const CORNER_TRIM_THICKNESS = 0.75;
+const CORNER_TRIM_THICKNESS = 1.5;
 
 const Shed = () => {
   const { shedConfig, roofStyle, windowPositions, doorType } = useConfigurator();
@@ -80,7 +80,7 @@ const Shed = () => {
         {floorMat}
       </Box>
 
-      {/* Corner trims (vertical boards to hide cladding ends) - width 3", thickness 0.75" */}
+      {/* Corner trims (vertical boards to hide cladding ends) - subtle timber corner boards */}
       {showCornerPosts && (
         <>
           <Box args={[CORNER_TRIM_WIDTH, wallHeight, CORNER_TRIM_THICKNESS]} position={[-floorWidth / 2 - CORNER_TRIM_THICKNESS / 2, wallHeight / 2, -floorDepth / 2]} castShadow>{cornerPostMat}</Box>
