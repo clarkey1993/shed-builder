@@ -91,9 +91,9 @@ export default function Window({
         onPointerDown={onPointerDown}
         onPointerOver={(e) => { e.stopPropagation(); setIsHovered(true); gl.domElement.style.cursor = "move"; }}
         onPointerOut={(e) => { setIsHovered(false); gl.domElement.style.cursor = ""; }}
-        visible={false}
       >
         <boxGeometry args={[W + STUD * 2, H + STUD * 2, 0.5]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} />
       </mesh>
       <WindowFrame
         windowWidth={W}

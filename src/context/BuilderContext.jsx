@@ -25,6 +25,7 @@ export function BuilderProvider({ children }) {
   const [selectedElementId, setSelectedElementId] = useState(null);
   const [showFraming, setShowFraming] = useState(false);
   const [debugShowFullShed, setDebugShowFullShed] = useState(false);
+  const [debugShowDragPlanes, setDebugShowDragPlanes] = useState(false);
 
   const goToStep = (step) => {
     if (BUILDER_STEPS.includes(step)) setBuilderStep(step);
@@ -66,6 +67,8 @@ export function BuilderProvider({ children }) {
         setShowFraming,
         debugShowFullShed,
         setDebugShowFullShed,
+        debugShowDragPlanes,
+        setDebugShowDragPlanes,
       }}
     >
       {children}

@@ -29,7 +29,7 @@ const Wall = ({
   const wallGroupRef = useRef();
   const dragPlaneRef = useRef();
   const { shedConfig, setWindowPosition, windowTypes = {} } = useConfigurator();
-  const { selectedElementId, showFraming } = useBuilder();
+  const { selectedElementId, showFraming, debugShowDragPlanes } = useBuilder();
   const { woodFraming } = useShedTexturesContext();
 
   const doorHalfWidth = (hasDoor && doorType !== "none" && shedData.door_widths[doorType]?.standard / 2) || 0;
@@ -55,8 +55,15 @@ const Wall = ({
   return (
     <group ref={wallGroupRef} position={position} rotation={rotation}>
       <WallGrid wallId={wallId} width={width} height={height} visible={showWallGrid} />
-      <mesh ref={dragPlaneRef} position={[0, 0, 0.2]} visible={false}>
+      <mesh ref={dragPlaneRef} position={[0, 0, 0.2]}>
         <planeGeometry args={[width, height]} />
+        <meshBasicMaterial
+          side={THREE.DoubleSide}
+          color="#3388ff"
+          transparent
+          opacity={debugShowDragPlanes ? 0.25 : 0}
+          depthWrite={false}
+        />
       </mesh>
 
       {/* Top and bottom plates (always visible) */}
