@@ -90,7 +90,7 @@ const Shiplap = ({
         new THREE.Vector3(inst.width, 1, 1)
       );
       mesh.setMatrixAt(i, m);
-      const shade = 1.06 + (Math.random() - 0.5) * 0.04; // 1.04–1.08; all boards light
+      const shade = 1.04 + (Math.random() - 0.5) * 0.06;
       const color = baseColor.clone().multiplyScalar(shade);
       mesh.setColorAt(i, color);
     });
@@ -98,24 +98,21 @@ const Shiplap = ({
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   }, [flatCladdingInstances, exteriorZSign]);
 
-  const claddingMat = useMemo(() => {
-    const matProps = {
-      color: LIGHT_CEDAR,
-      roughness: 0.75,
-      metalness: 0.02,
-      transparent: claddingOpacity < 1,
-      opacity: claddingOpacity,
-      vertexColors: true,
-    };
-    // DIAGNOSTIC PASS: woodCladding BYPASSED, woodCladdingBump BYPASSED. Plain meshStandardMaterial,
-    // color-only, no texture maps. Depth/striping reduced so wall reads obviously timber.
-    return <meshStandardMaterial {...matProps} />;
-  }, [claddingOpacity]);
+  const claddingMat = useMemo(() => (
+    <meshStandardMaterial
+      color={LIGHT_CEDAR}
+      roughness={0.9}
+      metalness={0}
+      vertexColors
+      transparent={claddingOpacity < 1}
+      opacity={claddingOpacity}
+    />
+  ), [claddingOpacity]);
 
   if (flatCladdingInstances.length === 0) return null;
 
   return (
-    <instancedMesh ref={claddingRef} args={[null, null, flatCladdingInstances.length]} castShadow receiveShadow>
+    <instancedMesh ref={claddingRef} args={[null, null, flatCladdingInstances.length]} castShadow={false} receiveShadow={false}>
       <RoundedBoxGeometry attach="geometry" args={[1, VISIBLE_COVERAGE, BOARD_THICKNESS]} radius={0.25} smoothness={4} />
       {claddingMat}
     </instancedMesh>
