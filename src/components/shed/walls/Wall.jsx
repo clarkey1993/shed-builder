@@ -12,7 +12,7 @@ import Shiplap from "../cladding/Shiplap";
 import WallFraming from "../framing/WallFraming";
 
 const WARM_CEDAR = "#e0b890";
-/** Interior face = local -Z; offset framing so it sits on interior side */
+/** Offset framing toward interior from wall plane (opposite side of cladding) */
 const FRAMING_INTERIOR_OFFSET = 1;
 
 const Wall = ({
@@ -27,7 +27,6 @@ const Wall = ({
   claddingOpacity = 1,
   exteriorZSign = 1,
 }) => {
-  // Interior = opposite of exterior; framing always on interior (cladding untouched)
   const framingZOffset = -exteriorZSign * FRAMING_INTERIOR_OFFSET;
   const wallGroupRef = useRef();
   const dragPlaneRef = useRef();
