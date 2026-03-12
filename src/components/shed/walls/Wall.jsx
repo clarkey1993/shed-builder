@@ -11,7 +11,7 @@ import WallGrid from "../grid/WallGrid";
 import Shiplap from "../cladding/Shiplap";
 import WallFraming from "../framing/WallFraming";
 
-const TRIM_COLOR = "#c49a6c";
+const WARM_CEDAR = "#c89b6d";
 
 const Wall = ({
   wallId,
@@ -36,9 +36,9 @@ const Wall = ({
   const doorHalfWidth = doorDims ? doorDims.width / 2 : 0;
   const plateThickness = shedConfig.framing.upright_middles_thickness_x;
   const trimMat = woodFraming ? (
-    <meshStandardMaterial map={woodFraming} roughness={0.7} metalness={0} color={TRIM_COLOR} />
+    <meshStandardMaterial map={woodFraming} roughness={0.75} metalness={0.05} color={WARM_CEDAR} />
   ) : (
-    <meshStandardMaterial color={TRIM_COLOR} roughness={0.7} />
+    <meshStandardMaterial color={WARM_CEDAR} roughness={0.75} />
   );
 
   const showWallGrid = selectedElementId !== null && selectedElementId.startsWith(`window-${wallId}-`);

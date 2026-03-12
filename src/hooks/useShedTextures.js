@@ -89,14 +89,14 @@ function createWoodTexture(width = 128, height = 128, options = {}) {
   return tex;
 }
 
-// Dark matte felt roof: #2d2d2d, grainy texture with visible fibre-like noise
+// Dark matte roofing felt: grainy texture with visible fibre-like noise. Non-shiny, realistic.
 function createRoofTexture(width = 256, height = 256) {
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d");
   const img = ctx.createImageData(width, height);
-  const base = [0x2d, 0x2d, 0x2d];
+  const base = [0x1e, 0x1e, 0x1e]; // Dark roofing felt
   for (let i = 0; i < img.data.length; i += 4) {
     const x = (i / 4) % width;
     const y = Math.floor(i / 4 / width);

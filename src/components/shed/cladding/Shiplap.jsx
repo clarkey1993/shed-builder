@@ -10,7 +10,7 @@ import { useShedTexturesContext } from "../../../context/ShedTextureContext";
 
 const BOARD_HEIGHT = 5;
 const VISIBLE_COVERAGE = 4;
-const BOARD_THICKNESS = 0.9; // Slight thickness for realistic timber
+const BOARD_THICKNESS = 0.6; // Timber thickness, overlap + ROW_DEPTH_OFFSET create shadow lines
 const OVERLAP = 0.12;
 const ROW_DEPTH_OFFSET = 0.12; // Depth stagger for shadow grooves between boards
 const LIGHT_CEDAR = "#c89b6d";
@@ -29,6 +29,7 @@ const Shiplap = ({
   const { woodCladding, woodCladdingBump } = useShedTexturesContext();
   const plateThickness = 1.5;
   const studHeight = height - plateThickness * 2;
+  // Fallback only when callers omit doorHeight (e.g. malformed props). Normal path: Wall passes doorDims.height.
   const doorH = doorHeight ?? 6 * 12;
 
   const doorTop = -height / 2 + doorH;
@@ -49,9 +50,11 @@ const Shiplap = ({
         });
       };
       if (doorHalfWidth > 0 && y >= doorBottom && y <= doorTop) {
+        // TODO: move margin (2) into getOpeningClearance()
         cut(-doorHalfWidth - 2, doorHalfWidth + 2);
       }
       windowOpenings.forEach(({ x: wx, width: ww, height: wh }) => {
+        // TODO: move margins (2 vertical, 3 horizontal) into getOpeningClearance()
         const winHalfH = wh / 2 + 2;
         if (y >= -winHalfH && y <= winHalfH) cut(wx - ww / 2 - 3, wx + ww / 2 + 3);
       });
@@ -116,7 +119,7 @@ const Shiplap = ({
 
   return (
     <instancedMesh ref={claddingRef} args={[null, null, flatCladdingInstances.length]} castShadow receiveShadow>
-      <RoundedBoxGeometry attach="geometry" args={[1, VISIBLE_COVERAGE, BOARD_THICKNESS]} radius={0.45} smoothness={4} />
+      <RoundedBoxGeometry attach="geometry" args={[1, VISIBLE_COVERAGE, BOARD_THICKNESS]} radius={0.3} smoothness={4} />
       {claddingMat}
     </instancedMesh>
   );

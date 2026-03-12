@@ -34,7 +34,7 @@ Reference file: `src/config/shedRules.js`
 | Standard Window | 24 × 24 |
 | Security Window | 24 × 12 |
 
-**Current implementation:** `Window.jsx` and `Wall.jsx` use hardcoded `W = 22`, `WINDOW_HEIGHT = 36`. ConfiguratorContext stores `windowTypes` (STANDARD / SECURITY) but rendering does not yet apply different dimensions. Both types render at 22" × 36".
+**Current implementation:** `Window.jsx` and `Wall.jsx` use `getWindowDimensions()` from `src/systems/openings/getOpeningDimensions.js`. ConfiguratorContext stores `windowTypes` (STANDARD / SECURITY). STANDARD renders at 24" × 24", SECURITY at 24" × 12".
 
 ---
 
@@ -47,7 +47,7 @@ Reference file: `src/config/shedRules.js`
 
 Door height follows wall height.
 
-**Current implementation:** `shedData.json` `door_widths` uses frame widths: single standard 31, single workshop 33.5; double standard 60, double workshop 62.5. These are full frame widths, not clear openings. Door is fixed to front wall center (no drag).
+**Current implementation:** `getDoorDimensions()` reads frame widths from `shedData.json` `door_widths`: single standard 31, single workshop 33.5; double standard 60, double workshop 62.5. These are full frame widths, not clear openings. Door is fixed to front wall center (no drag). Internal partition doors also use `getDoorDimensions()`.
 
 ---
 

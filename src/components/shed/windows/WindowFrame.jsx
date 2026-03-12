@@ -12,10 +12,11 @@ const TRIM_OFFSET = 0.5;
 const WindowFrame = ({ windowWidth, windowHeight, positionX, positionY, trimMat, isHovered = false, isSelected = false }) => {
   const { woodFraming } = useShedTexturesContext();
   const emissive = (isHovered || isSelected) ? 0.08 : 0;
+  const WARM_CEDAR = "#c89b6d";
   const framingMat = woodFraming ? (
-    <meshStandardMaterial map={woodFraming} roughness={0.65} metalness={0.1} color="#b06500" emissive="#222" emissiveIntensity={emissive} />
+    <meshStandardMaterial map={woodFraming} roughness={0.75} metalness={0.05} color={WARM_CEDAR} emissive="#222" emissiveIntensity={emissive} />
   ) : (
-    <meshStandardMaterial color="#b06500" roughness={0.65} metalness={0.1} emissive="#222" emissiveIntensity={emissive} />
+    <meshStandardMaterial color={WARM_CEDAR} roughness={0.75} metalness={0.05} emissive="#222" emissiveIntensity={emissive} />
   );
   const trim = trimMat || framingMat;
   const fullW = windowWidth + TRIM_OFFSET * 2;

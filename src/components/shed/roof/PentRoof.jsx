@@ -24,16 +24,18 @@ const PentRoof = ({ width: floorWidth, depth: floorDepth, opacity = 1, showFrami
 
   const roofMat = useMemo(() => {
     const transparent = opacity < 1;
-    if (!roofFelt) return <meshStandardMaterial color="#2d2d2d" roughness={0.96} metalness={0} transparent={transparent} opacity={opacity} depthWrite={!transparent} />;
+    const roofColor = "#1e1e1e";
+    if (!roofFelt) return <meshStandardMaterial color={roofColor} roughness={0.98} metalness={0} transparent={transparent} opacity={opacity} depthWrite={!transparent} />;
     const tex = roofFelt.clone();
     tex.repeat.set((floorWidth + EAVE_OVERHANG * 2) / 24, (floorDepth + EAVE_OVERHANG * 2) / 24);
-    return <meshStandardMaterial map={tex} roughness={0.96} metalness={0} color="#2d2d2d" transparent={transparent} opacity={opacity} depthWrite={!transparent} />;
+    return <meshStandardMaterial map={tex} roughness={0.98} metalness={0} color={roofColor} transparent={transparent} opacity={opacity} depthWrite={!transparent} />;
   }, [roofFelt, floorWidth, floorDepth, opacity]);
 
+  const WARM_CEDAR = "#c89b6d";
   const fasciaMat = woodFraming ? (
-    <meshStandardMaterial map={woodFraming} roughness={0.7} metalness={0.1} color="#8b5a2b" transparent={opacity < 1} opacity={opacity} depthWrite={opacity >= 1} />
+    <meshStandardMaterial map={woodFraming} roughness={0.75} metalness={0.05} color={WARM_CEDAR} transparent={opacity < 1} opacity={opacity} depthWrite={opacity >= 1} />
   ) : (
-    <meshStandardMaterial color="#8b5a2b" roughness={0.7} metalness={0.1} transparent={opacity < 1} opacity={opacity} depthWrite={opacity >= 1} />
+    <meshStandardMaterial color={WARM_CEDAR} roughness={0.75} metalness={0.05} transparent={opacity < 1} opacity={opacity} depthWrite={opacity >= 1} />
   );
 
   const roofW = floorWidth + EAVE_OVERHANG * 2;

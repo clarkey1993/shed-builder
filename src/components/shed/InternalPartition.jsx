@@ -4,23 +4,29 @@
  */
 import { useMemo, useRef } from "react";
 import { Box } from "@react-three/drei";
+import { useConfigurator } from "../../context/ConfiguratorContext";
 import { useShedTexturesContext } from "../../context/ShedTextureContext";
 import InternalPartitionDoor from "./InternalPartitionDoor";
-import { SHED_RULES } from "../../config/shedRules";
+import { getDoorDimensions } from "../../systems/openings/getOpeningDimensions";
 
 // Bramwood rule reference: see src/config/shedRules.js
-// Framing studSpacing 24" (SHED_RULES.framing.studSpacing). Cladding boardWidth 5", visibleCoverage 4".
+// Framing studSpacing 24". Cladding boardWidth 5", visibleCoverage 4".
 const GAP = 0.25;
 const BOARD_WIDTH = 5.5;
 const BOARD_THICKNESS = 0.5;
 const STUD_SPACING = 24;
 const FRAMING_X = 2;
 const FRAMING_Y = 2;
-const DOOR_WIDTH = 31;
 
 const InternalPartition = ({ partition, floorWidth, floorDepth, wallHeight }) => {
   const groupRef = useRef();
+  const { wallHeightType } = useConfigurator();
   const { woodCladding, woodFraming } = useShedTexturesContext();
+  const doorWidth = getDoorDimensions({
+    doorType: "single",
+    wallHeightType: wallHeightType || "standard",
+    wallHeight,
+  }).width;
 
   const { axis, studIndex, hasDoor, doorOffset } = partition;
 
@@ -50,11 +56,11 @@ const InternalPartition = ({ partition, floorWidth, floorDepth, wallHeight }) =>
     const positions = [];
     const step = BOARD_WIDTH + GAP;
     for (let x = -length / 2 + BOARD_WIDTH / 2; x <= length / 2 - BOARD_WIDTH / 2; x += step) {
-      const inDoor = hasDoor && doorOffset != null && Math.abs(x - doorOffset) < DOOR_WIDTH / 2 + BOARD_WIDTH / 2;
+      const inDoor = hasDoor && doorOffset != null && Math.abs(x - doorOffset) < doorWidth / 2 + BOARD_WIDTH / 2;
       if (!inDoor) positions.push(x);
     }
     return positions;
-  }, [length, hasDoor, doorOffset]);
+  }, [length, hasDoor, doorOffset, doorWidth]);
 
   const claddingMat = useMemo(() => {
     if (!woodCladding) return <meshStandardMaterial color="#B5651D" roughness={0.7} metalness={0} />;

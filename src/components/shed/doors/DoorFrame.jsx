@@ -18,7 +18,7 @@ const metalMat = <meshStandardMaterial color="#9ca3af" roughness={0.85} metalnes
 
 const DoorFrame = ({ doorType, wallHeight, trimMat }) => {
   const { wallHeightType } = useConfigurator();
-  const { woodFraming, woodCladding } = useShedTexturesContext();
+  const { woodFraming, woodCladding, woodCladdingBump } = useShedTexturesContext();
   const { width: doorWidth, height: doorHeight } = getDoorDimensions({
     doorType,
     wallHeightType: wallHeightType || "standard",
@@ -29,16 +29,21 @@ const DoorFrame = ({ doorType, wallHeight, trimMat }) => {
   const doorCenterY = -wallHeight / 2 + doorHeight / 2;
 
   const framingMat = woodFraming ? (
-    <meshStandardMaterial map={woodFraming} roughness={0.65} metalness={0.1} color="#b06500" />
+    <meshStandardMaterial map={woodFraming} roughness={0.7} metalness={0.05} color={LIGHT_CEDAR} />
   ) : (
-    <meshStandardMaterial color="#b06500" roughness={0.65} metalness={0.1} />
+    <meshStandardMaterial color={LIGHT_CEDAR} roughness={0.7} metalness={0.05} />
   );
 
-  const doorBoardMat = woodCladding ? (
-    <meshStandardMaterial map={woodCladding} roughness={0.7} metalness={0.1} color={LIGHT_CEDAR} />
-  ) : (
-    <meshStandardMaterial roughness={0.7} metalness={0.1} color={LIGHT_CEDAR} />
-  );
+  const doorBoardMat = useMemo(() => {
+    const matProps = { roughness: 0.8, metalness: 0.05, color: LIGHT_CEDAR };
+    if (!woodCladding) return <meshStandardMaterial {...matProps} />;
+    const tex = woodCladding.clone();
+    tex.repeat.set(doorWidth / 24, doorHeight / 24);
+    if (!woodCladdingBump) return <meshStandardMaterial {...matProps} map={tex} />;
+    const bump = woodCladdingBump.clone();
+    bump.repeat.set(doorWidth / 24, doorHeight / 24);
+    return <meshStandardMaterial {...matProps} map={tex} bumpMap={bump} bumpScale={0.025} />;
+  }, [woodCladding, woodCladdingBump, doorWidth, doorHeight]);
 
   const trim = trimMat || framingMat;
   const fullW = doorWidth + STUD_WIDTH * 2 + TRIM_OFFSET * 2;
