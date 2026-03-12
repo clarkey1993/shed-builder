@@ -103,8 +103,8 @@ const Shed = () => {
       )}
       {showSideWalls && (
         <>
-          <Wall wallId="left" width={floorDepth} height={wallHeight} position={[-floorWidth / 2, wallHeight / 2, 0]} rotation={[0, Math.PI / 2, 0]} windowPositions={windowPositions.left} claddingOpacity={claddingOpacity} />
-          <Wall wallId="right" width={floorDepth} height={wallHeight} position={[floorWidth / 2, wallHeight / 2, 0]} rotation={[0, -Math.PI / 2, 0]} windowPositions={windowPositions.right} claddingOpacity={claddingOpacity} />
+          <Wall wallId="left" width={floorDepth} height={wallHeight} position={[-floorWidth / 2, wallHeight / 2, 0]} rotation={[0, Math.PI / 2, 0]} exteriorZSign={-1} windowPositions={windowPositions.left} claddingOpacity={claddingOpacity} />
+          <Wall wallId="right" width={floorDepth} height={wallHeight} position={[floorWidth / 2, wallHeight / 2, 0]} rotation={[0, -Math.PI / 2, 0]} exteriorZSign={-1} windowPositions={windowPositions.right} claddingOpacity={claddingOpacity} />
         </>
       )}
 
