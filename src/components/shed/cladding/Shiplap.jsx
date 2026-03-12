@@ -8,10 +8,11 @@ import * as THREE from "three";
 import { RoundedBoxGeometry } from "@react-three/drei";
 const BOARD_HEIGHT = 5;
 const VISIBLE_COVERAGE = 4;
-const BOARD_THICKNESS = 0.7; // Timber thickness; reduced to limit shadow depth
+const BOARD_THICKNESS = 0.6; // Thinner boards = shallower grooves, less shadow
 const OVERLAP = 0.12;
-const ROW_DEPTH_OFFSET = 0.06; // Subtle depth, avoid deep black grooves
-const LIGHT_CEDAR = "#e0b890"; // Warm timber, lighter so it reads clearly
+const ROW_DEPTH_OFFSET = 0.025; // Very subtle step; cap prevents cumulative black striping
+const ROW_DEPTH_CAP = 0.2; // Max total recession so lower rows don't vanish into shadow
+const LIGHT_CEDAR = "#eac99e"; // Light warm cedar; prioritize color over texture
 const COLOR_VARIATION = 0.05;
 
 const Shiplap = ({
@@ -80,14 +81,15 @@ const Shiplap = ({
     if (!mesh) return;
     const baseColor = new THREE.Color(LIGHT_CEDAR);
     flatCladdingInstances.forEach((inst, i) => {
-      const depthOff = inst.rowIndex * ROW_DEPTH_OFFSET;
+      const rawDepth = inst.rowIndex * ROW_DEPTH_OFFSET;
+      const depthOff = Math.min(rawDepth, ROW_DEPTH_CAP);
       m.compose(
         new THREE.Vector3(inst.x, inst.y, -BOARD_THICKNESS / 2 - 0.2 - depthOff),
         new THREE.Quaternion(),
         new THREE.Vector3(inst.width, 1, 1)
       );
       mesh.setMatrixAt(i, m);
-      const shade = 1.02 + (Math.random() - 0.5) * COLOR_VARIATION * 2; // Bias brighter
+      const shade = 1.04 + (Math.random() - 0.5) * 0.06; // 1.01–1.07 so no board darkens
       const color = baseColor.clone().multiplyScalar(shade);
       mesh.setColorAt(i, color);
     });
@@ -104,7 +106,8 @@ const Shiplap = ({
       opacity: claddingOpacity,
       vertexColors: true,
     };
-    // Color-dominated for warm timber; texture was darkening boards too much
+    // DIAGNOSTIC: wall was near-black due to (c) BOTH: (a) woodCladding map darkened boards — bypassed, color-only.
+    // (b) depth offset was aggressive — ROW_DEPTH_OFFSET reduced + ROW_DEPTH_CAP prevents cumulative striping.
     return <meshStandardMaterial {...matProps} />;
   }, [claddingOpacity]);
 
@@ -112,7 +115,7 @@ const Shiplap = ({
 
   return (
     <instancedMesh ref={claddingRef} args={[null, null, flatCladdingInstances.length]} castShadow receiveShadow>
-      <RoundedBoxGeometry attach="geometry" args={[1, VISIBLE_COVERAGE, BOARD_THICKNESS]} radius={0.35} smoothness={4} />
+      <RoundedBoxGeometry attach="geometry" args={[1, VISIBLE_COVERAGE, BOARD_THICKNESS]} radius={0.3} smoothness={4} />
       {claddingMat}
     </instancedMesh>
   );
