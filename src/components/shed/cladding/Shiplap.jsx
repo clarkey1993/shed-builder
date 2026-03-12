@@ -81,7 +81,7 @@ const Shiplap = ({
     flatCladdingInstances.forEach((inst, i) => {
       // CUMULATIVE ROW DEPTH REMOVED
       m.compose(
-        new THREE.Vector3(inst.x, inst.y, -BOARD_THICKNESS / 2 - 0.2),
+        new THREE.Vector3(inst.x, inst.y, BOARD_THICKNESS / 2 + 0.2),
         new THREE.Quaternion(),
         new THREE.Vector3(inst.width, 1, 1)
       );
