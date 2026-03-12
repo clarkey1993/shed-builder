@@ -15,7 +15,7 @@ const VISIBLE_COVERAGE = 4;
 const BOARD_THICKNESS = 0.6;
 const OVERLAP = 0.12;
 const ROW_DEPTH_OFFSET = 0.06;
-const LIGHT_CEDAR = "#3d2817";
+const LIGHT_CEDAR = "#c89b6d";
 const COLOR_VARIATION = 0.05;
 
 const Shiplap = ({

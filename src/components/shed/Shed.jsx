@@ -13,21 +13,21 @@ const CORNER_TRIM_THICKNESS = 0.75;
 const Shed = () => {
   const { shedConfig, roofStyle, windowPositions, doorType } = useConfigurator();
   const { viewMode, partitions } = useInteriorView();
-  const { builderStep, showFraming } = useBuilder();
+  const { builderStep, showFraming, debugShowFullShed } = useBuilder();
   const { woodFraming, osb } = useShedTexturesContext();
 
   const isInterior = viewMode === "interior";
 
-  // Step-based visibility
+  // Step-based visibility (or full shed when debug mode enabled)
   const showBase = true;
-  const showFrontWall = ["FRONT_WALL", "SIDE_WALLS", "BACK_WALL", "ROOF", "INTERIOR"].includes(builderStep);
-  const showSideWalls = ["SIDE_WALLS", "BACK_WALL", "ROOF", "INTERIOR"].includes(builderStep);
-  const showBackWall = ["BACK_WALL", "ROOF", "INTERIOR"].includes(builderStep);
-  const showCornerPosts = showSideWalls || showBackWall;
-  const showRoof = builderStep === "ROOF";
+  const showFrontWall = debugShowFullShed || ["FRONT_WALL", "SIDE_WALLS", "BACK_WALL", "ROOF", "INTERIOR"].includes(builderStep);
+  const showSideWalls = debugShowFullShed || ["SIDE_WALLS", "BACK_WALL", "ROOF", "INTERIOR"].includes(builderStep);
+  const showBackWall = debugShowFullShed || ["BACK_WALL", "ROOF", "INTERIOR"].includes(builderStep);
+  const showCornerPosts = debugShowFullShed || showSideWalls || showBackWall;
+  const showRoof = debugShowFullShed || builderStep === "ROOF";
   const showPartitions = builderStep === "INTERIOR" && isInterior;
-  const claddingOpacity = (isInterior || builderStep === "INTERIOR") ? 0.15 : 1;
-  const roofOpacity = isInterior ? 0 : 1;
+  const claddingOpacity = (isInterior || builderStep === "INTERIOR") && !debugShowFullShed ? 0.15 : 1;
+  const roofOpacity = isInterior && !debugShowFullShed ? 0 : 1;
 
   const floorWidth = shedConfig.width;
   const floorDepth = shedConfig.depth;
@@ -39,7 +39,11 @@ const Shed = () => {
   ) : (
     <meshStandardMaterial color="#8B4513" roughness={0.7} />
   );
-  const cornerPostMat = <meshStandardMaterial color="#ff0000" roughness={0.7} metalness={0} />;
+  const cornerPostMat = woodFraming ? (
+    <meshStandardMaterial map={woodFraming} roughness={0.7} metalness={0} color="#8b5a2b" />
+  ) : (
+    <meshStandardMaterial color="#8b5a2b" roughness={0.7} />
+  );
   const floorMat = useMemo(() => {
     if (!osb) return <meshStandardMaterial color="#a9a9a9" roughness={0.85} />;
     const tex = osb.clone();
@@ -49,10 +53,6 @@ const Shed = () => {
 
   return (
     <group scale={1 / 12}>
-      {/* TEMP: Live Shed component marker - remove after verifying render path */}
-      <Box args={[200, 80, 200]} position={[0, 150, 0]} castShadow>
-        <meshStandardMaterial color="#ff00ff" />
-      </Box>
       {/* Floor Bearers - wood texture, slightly varied roughness */}
       {(() => {
         const bearers = [];

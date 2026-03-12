@@ -61,8 +61,8 @@ const ApexRoof = ({ width, depth, opacity = 1, showFraming = false }) => {
         <extrudeGeometry args={[shape, extrudeSettings]} />
         {roofMat}
       </mesh>
-      <Box args={[roofWidth + 20, 16, 3]} position={[0, -8, 0]} castShadow>{fasciaMat}</Box>
-      <Box args={[roofWidth + 20, 16, 3]} position={[0, -8, roofDepth]} castShadow>{fasciaMat}</Box>
+      <Box args={[roofWidth + FASCIA_THICKNESS * 2, FASCIA_HEIGHT, FASCIA_THICKNESS]} position={[0, -FASCIA_HEIGHT / 2, 0]} castShadow>{fasciaMat}</Box>
+      <Box args={[roofWidth + FASCIA_THICKNESS * 2, FASCIA_HEIGHT, FASCIA_THICKNESS]} position={[0, -FASCIA_HEIGHT / 2, roofDepth]} castShadow>{fasciaMat}</Box>
       {/* Ridge cap - board along roof ridge */}
       <Box args={[RIDGE_CAP_WIDTH, 1, roofDepth]} position={[0, roofPeak + 0.5, roofDepth / 2]} castShadow>{fasciaMat}</Box>
       <Cone args={[FINIAL_R, FINIAL_H, 4]} position={[0, roofPeak + FINIAL_H / 2, 0]} rotation={[0, 0, Math.PI / 4]} castShadow>{fasciaMat}</Cone>

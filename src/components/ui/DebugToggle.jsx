@@ -4,10 +4,19 @@
 import { useBuilder } from "../../context/BuilderContext";
 
 export default function DebugToggle() {
-  const { showDimensions, setShowDimensions, showFraming, setShowFraming } = useBuilder();
+  const { showDimensions, setShowDimensions, showFraming, setShowFraming, debugShowFullShed, setDebugShowFullShed } = useBuilder();
 
   return (
     <div className="flex items-center gap-4">
+      <label className="flex items-center gap-1.5 cursor-pointer text-gray-500 hover:text-gray-700 transition-colors" title="Preview all shed parts at once for visual development">
+        <input
+          type="checkbox"
+          checked={debugShowFullShed}
+          onChange={(e) => setDebugShowFullShed(e.target.checked)}
+          className="w-3.5 h-3.5 rounded border-gray-300 text-amber-600 focus:ring-amber-500/30"
+        />
+        <span>Debug: Show full shed</span>
+      </label>
       <label className="flex items-center gap-1.5 cursor-pointer text-gray-500 hover:text-gray-700 transition-colors">
         <input
           type="checkbox"

@@ -24,6 +24,7 @@ export function BuilderProvider({ children }) {
   const [isDraggingElement, setIsDraggingElement] = useState(false);
   const [selectedElementId, setSelectedElementId] = useState(null);
   const [showFraming, setShowFraming] = useState(false);
+  const [debugShowFullShed, setDebugShowFullShed] = useState(false);
 
   const goToStep = (step) => {
     if (BUILDER_STEPS.includes(step)) setBuilderStep(step);
@@ -63,6 +64,8 @@ export function BuilderProvider({ children }) {
         setSelectedElementId,
         showFraming,
         setShowFraming,
+        debugShowFullShed,
+        setDebugShowFullShed,
       }}
     >
       {children}
