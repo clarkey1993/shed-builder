@@ -1,3 +1,96 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --color-accent: #2A7F7F;
+  --color-accent-hover: #236b6b;
+  --color-accent-light: rgba(42, 127, 127, 0.08);
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+html { font-family: var(--font-sans); }
+body {
+  -webkit-font-smoothing: antialiased;
+  color: #1a1a1a;
+  background: #FAFAFA;
+}
+
+.btn-tab {
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  outline: none;
+}
+.btn-tab-inactive {
+  background: transparent;
+  color: #777;
+}
+.btn-tab-inactive:hover { color: #444; background: rgba(0,0,0,0.03); }
+.btn-tab-active {
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+}
+.btn-tab-active:hover { background: rgba(42, 127, 127, 0.12); }
+
+.btn-option {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  outline: none;
+}
+.btn-option-inactive {
+  background: white;
+  color: #444;
+  border: 1px solid #e0e0e0;
+}
+.btn-option-inactive:hover { background: #f8f8f8; border-color: #d0d0d0; }
+.btn-option-active {
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+  border: 1px solid rgba(42, 127, 127, 0.25);
+  font-weight: 600;
+}
+.btn-option-active:hover { background: rgba(42, 127, 127, 0.12); }
+
+.btn-primary {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  color: white;
+  background: var(--color-accent);
+  transition: all 0.2s ease;
+  outline: none;
+}
+.btn-primary:hover { background: var(--color-accent-hover); }
+.btn-primary:active { transform: scale(0.99); }
+
+.btn-secondary {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  background: #f5f5f5;
+  color: #555;
+  transition: all 0.2s ease;
+}
+.btn-secondary:hover { background: #ebebeb; }
+
+.option-group {
+  padding: 1.25rem;
+  border-radius: 0.75rem;
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+}
+
+.section-heading {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.01em;
+}

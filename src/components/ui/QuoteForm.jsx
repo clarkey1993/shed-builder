@@ -1,51 +1,40 @@
 import { useConfigurator } from "../../context/ConfiguratorContext";
 
-const QuoteForm = ({ onClose }) => {
+export default function QuoteForm({ onClose }) {
   const { size, roofStyle, windows } = useConfigurator();
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    const email = event.target.email.value;
-    console.log("Quote Request:");
-    console.log("Email:", email);
-    console.log("Size:", `${size.width}x${size.depth}`);
-    console.log("Roof Style:", roofStyle);
-    console.log("Windows:", windows);
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const email = e.target.email.value;
+    console.log("Quote:", { email, size: `${size.width}x${size.depth}`, roofStyle, windows });
     onClose();
   };
 
   return (
-    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-4">Get a Quote</h2>
-        <p className="mb-4">
-          Enter your email to receive a quote for your custom shed configuration.
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">Get a Quote</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Enter your email to receive a quote for your custom shed.
         </p>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Email Address
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
+              Email
             </label>
             <input
               type="email"
               name="email"
               id="email"
               required
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#2A7F7F]/30 focus:border-[#2A7F7F] outline-none transition-all"
             />
           </div>
-          <div className="flex justify-end gap-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400"
-            >
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose} className="btn-secondary flex-1">
               Cancel
             </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            >
+            <button type="submit" className="btn-primary flex-1">
               Send Quote
             </button>
           </div>
@@ -53,6 +42,4 @@ const QuoteForm = ({ onClose }) => {
       </div>
     </div>
   );
-};
-
-export default QuoteForm;
+}

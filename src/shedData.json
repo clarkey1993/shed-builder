@@ -1,0 +1,58 @@
+{
+  "apex_roof_dims": {
+    "4": 73.5,
+    "5": 75.5,
+    "6": 77.5,
+    "7": 79.5,
+    "8": 81.5,
+    "9": 83.5,
+    "10": 85,
+    "11": 87,
+    "12": 89
+  },
+  "pent_roof_dims": {
+    "4": { "front": 76, "back": 70 },
+    "5": { "front": 76, "back": 70 },
+    "6": { "front": 76, "back": 70 },
+    "7": { "front": 77, "back": 70 },
+    "8": { "front": 78, "back": 70 },
+    "10": { "front": 80, "back": 70 },
+    "12": { "front": 82, "back": 70 }
+  },
+  "wall_heights": {
+    "standard": 66,
+    "workshop": 70
+  },
+  "door_widths": {
+    "single": {
+      "standard": 31,
+      "workshop": 33.5
+    },
+    "double": {
+      "standard": 60,
+      "workshop": 62.5
+    }
+  },
+  "floor_widths_inches": {
+    "4": 46,  
+    "5": 58,
+    "6": 70,
+    "7": 82,
+    "8": 94,
+    "9": 106,
+    "10": 118,
+    "11": 130,
+    "12": 142
+  },
+  "floor_dimensions": {
+    "width_offset": 2,
+    "depth_offset": 2
+  },
+  "framing": {
+    "upright_ends_thickness_x": 2,
+    "upright_ends_thickness_y": 1,
+    "upright_middles_thickness_x": 2,
+    "upright_middles_thickness_y": 2,
+    "spacing_ft": 2
+  }
+}

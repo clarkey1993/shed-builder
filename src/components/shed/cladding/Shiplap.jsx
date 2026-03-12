@@ -1,0 +1,123 @@
+/**
+ * Shiplap - Horizontal wooden cladding boards.
+ * Boards run horizontally, stack vertically. Light cedar tone with subtle variation.
+ */
+import { RoundedBoxGeometry } from "@react-three/drei";
+import { useMemo, useRef, useEffect } from "react";
+import * as THREE from "three";
+import { useShedTexturesContext } from "../../../context/ShedTextureContext";
+
+const W = 22;
+const WINDOW_HEIGHT = 36;
+const BOARD_WIDTH = 5;
+const VISIBLE_COVERAGE = 4;
+const BOARD_THICKNESS = 0.5;
+const ROW_DEPTH_OFFSET = 0.05;
+const LIGHT_CEDAR = "#c89b6d";
+const COLOR_VARIATION = 0.05;
+
+const Shiplap = ({
+  width,
+  height,
+  windowPositions = [],
+  hasDoor,
+  doorHalfWidth,
+  claddingOpacity = 1,
+}) => {
+  const claddingRef = useRef();
+  const { woodCladding, woodCladdingBump } = useShedTexturesContext();
+  const plateThickness = 1.5;
+  const studHeight = height - plateThickness * 2;
+
+  const doorTop = -height / 2 + 6 * 12;
+  const doorBottom = -height / 2;
+  const winHalfH = WINDOW_HEIGHT / 2 + 2;
+
+  const { horizontalCladdingRows, flatCladdingInstances } = useMemo(() => {
+    const rows = [];
+    const halfStudH = studHeight / 2;
+    for (let y = -halfStudH + VISIBLE_COVERAGE / 2; y <= halfStudH - VISIBLE_COVERAGE / 2 + 0.1; y += VISIBLE_COVERAGE) {
+      let segs = [{ start: -width / 2, end: width / 2 }];
+      const cut = (minX, maxX) => {
+        segs = segs.flatMap((s) => {
+          if (s.end <= minX || s.start >= maxX) return [s];
+          const out = [];
+          if (s.start < minX) out.push({ start: s.start, end: minX });
+          if (s.end > maxX) out.push({ start: maxX, end: s.end });
+          return out;
+        });
+      };
+      if (doorHalfWidth > 0 && y >= doorBottom && y <= doorTop) {
+        cut(-doorHalfWidth - 2, doorHalfWidth + 2);
+      }
+      windowPositions.forEach((wx) => {
+        if (y >= -winHalfH && y <= winHalfH) cut(wx - W / 2 - 3, wx + W / 2 + 3);
+      });
+      const segments = segs
+        .filter((s) => s.end - s.start > 1)
+        .map((s) => ({ xCenter: (s.start + s.end) / 2, segWidth: s.end - s.start }));
+      if (segments.length) rows.push({ y, segments });
+    }
+    const list = [];
+    rows.forEach((row, rowIdx) => {
+      row.segments.forEach((seg) => {
+        list.push({
+          x: seg.xCenter,
+          y: row.y,
+          width: seg.segWidth,
+          rowIndex: rowIdx,
+        });
+      });
+    });
+    return { horizontalCladdingRows: rows, flatCladdingInstances: list };
+  }, [studHeight, width, doorHalfWidth, doorTop, doorBottom, windowPositions]);
+
+  useEffect(() => {
+    const m = new THREE.Matrix4();
+    const mesh = claddingRef.current;
+    if (!mesh) return;
+    const baseColor = new THREE.Color(LIGHT_CEDAR);
+    flatCladdingInstances.forEach((inst, i) => {
+      const depthOff = inst.rowIndex * ROW_DEPTH_OFFSET;
+      m.compose(
+        new THREE.Vector3(inst.x, inst.y, -0.25 - depthOff),
+        new THREE.Quaternion(),
+        new THREE.Vector3(inst.width, 1, 1)
+      );
+      mesh.setMatrixAt(i, m);
+      const offset = (Math.sin(i * 1.1) * 0.5 + 0.5) * COLOR_VARIATION * 2 - COLOR_VARIATION;
+      const shade = 1 + offset;
+      mesh.setColorAt(i, new THREE.Color(baseColor.r * shade, baseColor.g * shade, baseColor.b * shade));
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  }, [flatCladdingInstances]);
+
+  const claddingMat = useMemo(() => {
+    const matProps = {
+      color: LIGHT_CEDAR,
+      roughness: 0.7,
+      metalness: 0.1,
+      transparent: claddingOpacity < 1,
+      opacity: claddingOpacity,
+      vertexColors: true,
+    };
+    if (!woodCladding) return <meshStandardMaterial {...matProps} />;
+    const tex = woodCladding.clone();
+    tex.repeat.set(width / 24, studHeight / 24);
+    const bump = woodCladdingBump?.clone();
+    if (bump) bump.repeat.set(width / 24, studHeight / 24);
+    return <meshStandardMaterial {...matProps} map={tex} bumpMap={bump} bumpScale={0.02} />;
+  }, [woodCladding, woodCladdingBump, studHeight, width, claddingOpacity]);
+
+  if (flatCladdingInstances.length === 0) return null;
+
+  return (
+    <instancedMesh ref={claddingRef} args={[null, null, flatCladdingInstances.length]} castShadow receiveShadow>
+      <RoundedBoxGeometry args={[1, VISIBLE_COVERAGE, BOARD_THICKNESS]} radius={0.12} smoothness={2} />
+      {claddingMat}
+    </instancedMesh>
+  );
+};
+
+export default Shiplap;
