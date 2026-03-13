@@ -37,13 +37,13 @@ export default function CameraController() {
   const sideDistance = radius * 2.2;
 
   const stepCameras = useMemo(() => ({
-    BASE: { position: [width * 0.7, wallHeight * 1.1, depth * 0.7], target: [0, wallHeight * 0.5, 0] },
+    BASE: { position: [radius * 1.2, wallHeight * 1.2, radius * 1.2], target: [0, 0, 0] },
     FRONT_WALL: { position: [0, wallHeight * 0.9, -frontDistance], target: [0, wallHeight * 0.5, 0] },
     SIDE_WALLS: { position: [sideDistance, wallHeight * 0.9, 0], target: [0, wallHeight * 0.5, 0] },
     BACK_WALL: { position: [0, wallHeight * 0.9, frontDistance], target: [0, wallHeight * 0.5, 0] },
     ROOF: { position: [width * 0.8, wallHeight * 1.8, depth * 0.8], target: [0, wallHeight * 0.5, 0] },
     INTERIOR: { position: [width * 0.4, wallHeight * 0.8, depth * 0.4], target: [0, wallHeight * 0.5, 0] },
-  }), [width, depth, wallHeight]);
+  }), [width, depth, wallHeight, radius]);
 
   useEffect(() => {
     const cfg = stepCameras[builderStep] || stepCameras.BASE;

@@ -10,7 +10,7 @@ const TRIM_T = 1;
 const TRIM_OFFSET = 0.5;
 
 const TRIM_Z = 0.25 + TRIM_T / 2;
-const WindowFrame = ({ windowWidth, windowHeight, positionX, positionY, trimMat, isHovered = false, isSelected = false, exteriorZSign = 1 }) => {
+const WindowFrame = ({ windowWidth, windowHeight, positionX, positionY, trimMat, isHovered = false, isSelected = false, exteriorZSign = 1, showStructuralFraming = false }) => {
   const trimZ = TRIM_Z * exteriorZSign;
   const { woodFraming } = useShedTexturesContext();
   const emissive = (isHovered || isSelected) ? 0.08 : 0;
@@ -42,18 +42,22 @@ const WindowFrame = ({ windowWidth, windowHeight, positionX, positionY, trimMat,
   return (
     <group position={[positionX, positionY, 0]}>
       {(isHovered || isSelected) && <primitive object={outlineLine} />}
-      <Box args={[windowWidth, STUD_WIDTH, STUD_THICKNESS]} position={[0, windowHeight / 2 - STUD_WIDTH / 2, 0]} castShadow>
-        {framingMat}
-      </Box>
-      <Box args={[windowWidth, STUD_WIDTH, STUD_THICKNESS]} position={[0, -windowHeight / 2 + STUD_WIDTH / 2, 0]} castShadow>
-        {framingMat}
-      </Box>
-      <Box args={[STUD_WIDTH, windowHeight - STUD_WIDTH * 2, STUD_THICKNESS]} position={[-windowWidth / 2 - STUD_WIDTH / 2, 0, 0]} castShadow>
-        {framingMat}
-      </Box>
-      <Box args={[STUD_WIDTH, windowHeight - STUD_WIDTH * 2, STUD_THICKNESS]} position={[windowWidth / 2 + STUD_WIDTH / 2, 0, 0]} castShadow>
-        {framingMat}
-      </Box>
+      {showStructuralFraming && (
+        <>
+          <Box args={[windowWidth, STUD_WIDTH, STUD_THICKNESS]} position={[0, windowHeight / 2 - STUD_WIDTH / 2, 0]} castShadow>
+            {framingMat}
+          </Box>
+          <Box args={[windowWidth, STUD_WIDTH, STUD_THICKNESS]} position={[0, -windowHeight / 2 + STUD_WIDTH / 2, 0]} castShadow>
+            {framingMat}
+          </Box>
+          <Box args={[STUD_WIDTH, windowHeight - STUD_WIDTH * 2, STUD_THICKNESS]} position={[-windowWidth / 2 - STUD_WIDTH / 2, 0, 0]} castShadow>
+            {framingMat}
+          </Box>
+          <Box args={[STUD_WIDTH, windowHeight - STUD_WIDTH * 2, STUD_THICKNESS]} position={[windowWidth / 2 + STUD_WIDTH / 2, 0, 0]} castShadow>
+            {framingMat}
+          </Box>
+        </>
+      )}
       <Box args={[fullW, TRIM_W, TRIM_T]} position={[0, windowHeight / 2 + TRIM_OFFSET + TRIM_W / 2, trimZ]} castShadow>
         {trim}
       </Box>

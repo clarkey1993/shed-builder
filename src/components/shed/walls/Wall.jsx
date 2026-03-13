@@ -41,13 +41,16 @@ const Wall = ({
 
   const showWallGrid = selectedElementId !== null && selectedElementId.startsWith(`window-${wallId}-`);
 
+  const BOARD_HEIGHT = 5;
   const windowsForFraming = useMemo(
     () => windowPositions.map((x, i) => {
       const type = (windowTypes[wallId] || [])[i] || "STANDARD";
       const dims = getWindowDimensions(type);
-      return { x, width: dims.width, height: dims.height };
+      const windowTop = height / 2 - BOARD_HEIGHT;
+      const centerY = windowTop - dims.height / 2;
+      return { x, y: centerY, width: dims.width, height: dims.height };
     }),
-    [windowPositions, windowTypes, wallId]
+    [windowPositions, windowTypes, wallId, height]
   );
   const doorsForFraming = useMemo(() => {
     if (!doorDims) return [];
@@ -108,8 +111,10 @@ const Wall = ({
           wallId={wallId}
           index={i}
           wallWidth={width}
+          wallHeight={height}
           hasDoor={hasDoor && doorType !== "none"}
           doorHalfWidth={doorHalfWidth}
+          showFraming={showFraming}
           onPositionChange={setWindowPosition}
           dragPlaneRef={dragPlaneRef}
           wallGroupRef={wallGroupRef}

@@ -36,12 +36,15 @@ export function generateWallFraming({
 
   // Build list of opening ranges (xMin, xMax, yMin, yMax) for windows and doors
   const openings = [
-    ...windows.map((w) => ({
-      xMin: w.x - w.width / 2 - FRAMING_MARGIN,
-      xMax: w.x + w.width / 2 + FRAMING_MARGIN,
-      yMin: -w.height / 2 - 2,
-      yMax: w.height / 2 + 2,
-    })),
+    ...windows.map((w) => {
+      const centerY = w.y ?? 0;
+      return {
+        xMin: w.x - w.width / 2 - FRAMING_MARGIN,
+        xMax: w.x + w.width / 2 + FRAMING_MARGIN,
+        yMin: centerY - w.height / 2 - 2,
+        yMax: centerY + w.height / 2 + 2,
+      };
+    }),
     ...doors.map((d) => ({
       xMin: d.x - d.width / 2 - FRAMING_MARGIN,
       xMax: d.x + d.width / 2 + FRAMING_MARGIN,
@@ -97,9 +100,10 @@ export function generateWallFraming({
 
   // Headers above windows and doors
   windows.forEach((w) => {
+    const centerY = w.y ?? 0;
     headerPositions.push({
       x: w.x,
-      y: w.height / 2 + 2,
+      y: centerY + w.height / 2 + 2,
       width: w.width + FRAMING_MARGIN * 2,
       height: 3.5,
     });
