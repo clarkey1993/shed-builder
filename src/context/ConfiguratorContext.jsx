@@ -1,5 +1,7 @@
-import { createContext, useContext, useState } from "react";
-import shedData from "../shedData.json"; // Import shedData
+import { createContext, useContext, useState, useMemo, useEffect } from "react";
+import shedData from "../shedData.json";
+import { getWindowDimensions, getDoorDimensions } from "../systems/openings/getOpeningDimensions";
+import { canFitOneMoreWindow, getDefaultWindowPosition, openingFitsWall, clampWindowPositionToValid, minGapBetween } from "../systems/openings/windowPlacement";
 
 const ConfiguratorContext = createContext();
 
@@ -7,10 +9,12 @@ export const ConfiguratorProvider = ({ children }) => {
   const [step, setStep] = useState(1);
   const [size, setSize] = useState({ width: 8, depth: 6 }); // Nominal feet
   const [roofStyle, setRoofStyle] = useState("apex");
+  /** Pent roof only: which way the slope runs. Default front_to_back (high at front, low at back). */
+  const [pentSlopeDirection, setPentSlopeDirection] = useState("front_to_back");
   const [wallHeightType, setWallHeightType] = useState("standard");
   // Window positions per wall: { front, back, left, right } each [x, x, ...] in inches from center
   const [windowPositions, setWindowPositions] = useState({ front: [], back: [], left: [], right: [] });
-  // Window type per wall/index: STANDARD (default) | SECURITY. Dimensions unchanged until aligned with shedRules.
+  // Window type per wall/index: STANDARD (default) | SECURITY | DOUBLE.
   const [windowTypes, setWindowTypes] = useState({ front: [], back: [], left: [], right: [] });
   const [doorType, setDoorType] = useState("none");
   // Front door horizontal center (inches from wall center); 0 = centered
@@ -45,6 +49,8 @@ export const ConfiguratorProvider = ({ children }) => {
   };
 
   const setWindowType = (wallId, index, type) => {
+    const wallWidth = (wallId === "front" || wallId === "back") ? shedConfig.width : shedConfig.depth;
+    if (!openingFitsWall(wallWidth, getWindowDimensions(type).width, { edgeClearance: true })) return;
     setWindowTypes(prev => ({
       ...prev,
       [wallId]: (prev[wallId] || []).map((v, i) => (i === index ? type : v)),
@@ -52,9 +58,62 @@ export const ConfiguratorProvider = ({ children }) => {
   };
 
   const addWindow = (wallId) => {
-    setWindowPositions(prev => ({ ...prev, [wallId]: [...(prev[wallId] || []), 0] }));
+    const wallWidth = (wallId === "front" || wallId === "back") ? shedConfig.width : shedConfig.depth;
+    if (typeof wallWidth !== "number" || !Number.isFinite(wallWidth) || wallWidth <= 0) return;
+    const positions = windowPositions[wallId] || [];
+    const types = windowTypes[wallId] || [];
+    const otherWindows = positions.map((pos, i) => ({
+      x: Number.isFinite(Number(pos)) ? Number(pos) : 0,
+      width: getWindowDimensions(types[i] || "STANDARD").width,
+    }));
+    const newWindowWidth = getWindowDimensions("STANDARD").width;
+    if (!canFitOneMoreWindow(wallWidth, newWindowWidth, otherWindows)) return;
+
+    const hasDoorOnFront = wallId === "front" && doorType !== "none";
+    const wallHeight = typeof shedConfig.wallHeight === "number" && Number.isFinite(shedConfig.wallHeight) ? shedConfig.wallHeight : 66;
+    const doorWidth = hasDoorOnFront
+      ? getDoorDimensions({ doorType, wallHeightType: wallHeightType || "standard", wallHeight }).width
+      : 0;
+    const doorCenterX = hasDoorOnFront && Number.isFinite(Number(frontDoorCenterX)) ? Number(frontDoorCenterX) : null;
+    let defaultX = getDefaultWindowPosition(wallWidth, newWindowWidth, otherWindows, doorCenterX, doorWidth);
+    if (!Number.isFinite(defaultX)) defaultX = 0;
+
+    setWindowPositions(prev => ({ ...prev, [wallId]: [...(prev[wallId] || []), defaultX] }));
     setWindowTypes(prev => ({ ...prev, [wallId]: [...(prev[wallId] || []), "STANDARD"] }));
   };
+
+  const canAddWindow = useMemo(() => {
+    return (wallId) => {
+      const wallWidth = (wallId === "front" || wallId === "back") ? shedConfig.width : shedConfig.depth;
+      if (typeof wallWidth !== "number" || !Number.isFinite(wallWidth) || wallWidth <= 0) return false;
+      const positions = windowPositions[wallId] || [];
+      const types = windowTypes[wallId] || [];
+      const otherWindows = positions.map((pos, i) => ({
+        x: Number.isFinite(Number(pos)) ? Number(pos) : 0,
+        width: getWindowDimensions(types[i] || "STANDARD").width,
+      }));
+      return canFitOneMoreWindow(wallWidth, getWindowDimensions("STANDARD").width, otherWindows);
+    };
+  }, [shedConfig.width, shedConfig.depth, windowPositions, windowTypes]);
+
+  const doorFitsWall = useMemo(() => {
+    return (doorTypeKey) => {
+      if (doorTypeKey === "none") return true;
+      const wallWidth = shedConfig.width;
+      const wallHeight = typeof shedConfig.wallHeight === "number" && Number.isFinite(shedConfig.wallHeight) ? shedConfig.wallHeight : 66;
+      const w = getDoorDimensions({ doorType: doorTypeKey, wallHeightType: wallHeightType || "standard", wallHeight }).width;
+      return openingFitsWall(wallWidth, w, { edgeClearance: false });
+    };
+  }, [shedConfig.width, shedConfig.wallHeight, wallHeightType]);
+
+  const windowTypeFitsWall = useMemo(() => {
+    return (wallId, windowTypeKey) => {
+      const wallWidth = (wallId === "front" || wallId === "back") ? shedConfig.width : shedConfig.depth;
+      const w = getWindowDimensions(windowTypeKey).width;
+      return openingFitsWall(wallWidth, w, { edgeClearance: true });
+    };
+  }, [shedConfig.width, shedConfig.depth]);
+
   const removeWindow = (wallId, index) => {
     setWindowPositions(prev => ({ ...prev, [wallId]: prev[wallId].filter((_, i) => i !== index) }));
     setWindowTypes(prev => ({ ...prev, [wallId]: (prev[wallId] || []).filter((_, i) => i !== index) }));
@@ -90,6 +149,92 @@ export const ConfiguratorProvider = ({ children }) => {
     }));
   };
 
+  const doorTypeOrder = ["double_with_windows", "double", "stable", "single"];
+  /** Window type fallback order: largest to smallest. On resize, invalid types downgrade to the largest that fits. */
+  const windowTypeFallbackOrder = ["DOUBLE", "STANDARD", "SECURITY"];
+  useEffect(() => {
+    const frontWidth = shedConfig.width;
+    const wallHeight = typeof shedConfig.wallHeight === "number" && Number.isFinite(shedConfig.wallHeight) ? shedConfig.wallHeight : 66;
+
+    if (doorType !== "none") {
+      const w = getDoorDimensions({ doorType, wallHeightType: wallHeightType || "standard", wallHeight }).width;
+      if (!openingFitsWall(frontWidth, w, { edgeClearance: false })) {
+        const firstFitting = doorTypeOrder.find((key) => {
+          const dw = getDoorDimensions({ doorType: key, wallHeightType: wallHeightType || "standard", wallHeight }).width;
+          return openingFitsWall(frontWidth, dw, { edgeClearance: false });
+        });
+        setDoorType(firstFitting || "none");
+      }
+    }
+
+    const wallIds = ["front", "back", "left", "right"];
+    let needsTypeCorrection = false;
+    const nextTypes = {};
+    for (const wallId of wallIds) {
+      const wallWidth = (wallId === "front" || wallId === "back") ? shedConfig.width : shedConfig.depth;
+      const types = windowTypes[wallId] || [];
+      nextTypes[wallId] = types.map((t) => {
+        const fits = openingFitsWall(wallWidth, getWindowDimensions(t).width, { edgeClearance: true });
+        if (fits) return t;
+        needsTypeCorrection = true;
+        const fallback = windowTypeFallbackOrder.find((type) =>
+          openingFitsWall(wallWidth, getWindowDimensions(type).width, { edgeClearance: true })
+        );
+        return fallback || "STANDARD";
+      });
+    }
+
+    const nextPositions = {};
+    let needsPositionCorrection = false;
+    for (const wallId of wallIds) {
+      const wallWidth = (wallId === "front" || wallId === "back") ? shedConfig.width : shedConfig.depth;
+      const positions = windowPositions[wallId] || [];
+      const types = nextTypes[wallId] || [];
+      const corrected = [];
+      for (let i = 0; i < positions.length; i++) {
+        const type = types[i] || "STANDARD";
+        const width = getWindowDimensions(type).width;
+        const otherWindows = corrected.map((x, j) => ({ x, width: getWindowDimensions(types[j] || "STANDARD").width }))
+          .concat(positions.slice(i + 1).map((x, j) => ({ x: Number.isFinite(Number(x)) ? Number(x) : 0, width: getWindowDimensions(types[i + 1 + j] || "STANDARD").width })));
+        const currentX = Number.isFinite(Number(positions[i])) ? Number(positions[i]) : 0;
+        const validX = clampWindowPositionToValid(wallWidth, width, currentX, otherWindows);
+        corrected.push(validX);
+        if (!needsPositionCorrection && Math.abs(validX - currentX) > 0.001) needsPositionCorrection = true;
+      }
+      nextPositions[wallId] = corrected;
+
+      // If too many windows: remove from end until no overlaps (predictable rule).
+      const typeList = nextTypes[wallId] || [];
+      let n = corrected.length;
+      while (n >= 2) {
+        let overlaps = false;
+        const lastX = corrected[n - 1];
+        const lastW = getWindowDimensions(typeList[n - 1] || "STANDARD").width;
+        for (let i = 0; i < n - 1; i++) {
+          const gap = minGapBetween(getWindowDimensions(typeList[i] || "STANDARD").width, lastW);
+          if (Math.abs(corrected[i] - lastX) < gap - 0.001) {
+            overlaps = true;
+            break;
+          }
+        }
+        if (!overlaps) break;
+        n--;
+        needsPositionCorrection = true;
+      }
+      if (n < corrected.length) {
+        nextPositions[wallId] = corrected.slice(0, n);
+        nextTypes[wallId] = typeList.slice(0, n);
+      }
+    }
+
+    if (needsTypeCorrection) {
+      setWindowTypes(prev => ({ ...prev, ...nextTypes }));
+    }
+    if (needsPositionCorrection) {
+      setWindowPositions(prev => ({ ...prev, ...nextPositions }));
+    }
+  }, [shedConfig.width, shedConfig.depth, shedConfig.wallHeight]);
+
   return (
     <ConfiguratorContext.Provider
       value={{
@@ -109,11 +254,16 @@ export const ConfiguratorProvider = ({ children }) => {
         setWindowType,
         addWindow,
         removeWindow,
+        canAddWindow,
+        doorFitsWall,
+        windowTypeFitsWall,
         doorType,
         setDoorType,
         frontDoorCenterX,
         setFrontDoorCenterX,
         shedConfig, // Expose shedConfig
+        pentSlopeDirection,
+        setPentSlopeDirection,
       }}
     >
       {children}

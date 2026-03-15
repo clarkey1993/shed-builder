@@ -4,19 +4,48 @@ import { useThree } from "@react-three/fiber";
 import WindowFrame from "./WindowFrame";
 import { useBuilder } from "../../../context/BuilderContext";
 import { getWindowDimensions } from "../../../systems/openings/getOpeningDimensions";
+import { EDGE_CLEARANCE, minGapBetween, STUD } from "../../../systems/openings/windowPlacement";
 import { GRID_SNAP, STUD_SNAP, STUD_ASSIST_DIST } from "../../../systems/snapping/snapRules";
 
-const STUD = 3;
-const EDGE_CLEARANCE = STUD * 2; // 6" of timber between opening edge and wall corner
-
-function minGapBetween(windowWidth, otherWidth) {
-  return windowWidth / 2 + otherWidth / 2 + STUD * 2;
+/**
+ * Bay centers = midpoints between consecutive studs.
+ * Uses same layout as generateWallFraming: stud spacing STUD_SNAP (24"), studs at
+ * -halfW + i * actualSpacing, so bay centers at -halfW + (i + 0.5) * actualSpacing.
+ * Returns only centers that are within [min, max] and clear of other windows.
+ * Door zone is not excluded so windows can be placed over/above the door if desired.
+ */
+function getValidBayCenters(wallWidth, min, max, doorCenterX, doorWidth, windowWidth, otherWindows) {
+  if (typeof wallWidth !== "number" || !Number.isFinite(wallWidth) || wallWidth <= 0) return [];
+  const halfW = wallWidth / 2;
+  const numStuds = Math.floor(wallWidth / STUD_SNAP) + 1;
+  if (numStuds <= 1) return [];
+  const actualSpacing = wallWidth / (numStuds - 1);
+  if (!Number.isFinite(actualSpacing)) return [];
+  const centers = [];
+  for (let i = 0; i < numStuds - 1; i++) {
+    const c = -halfW + (i + 0.5) * actualSpacing;
+    if (!Number.isFinite(c) || c < min || c > max) continue;
+    let blocked = false;
+    for (const other of otherWindows) {
+      const ow = typeof other.width === "number" && Number.isFinite(other.width) ? other.width : 24;
+      const ox = typeof other.x === "number" && Number.isFinite(other.x) ? other.x : 0;
+      const gap = minGapBetween(windowWidth, ow);
+      if (c >= ox - gap / 2 && c <= ox + gap / 2) {
+        blocked = true;
+        break;
+      }
+    }
+    if (!blocked) centers.push(c);
+  }
+  return centers.filter((c) => Number.isFinite(c));
 }
 
 /**
- * Clamp to structurally valid range (edges, door, other windows), then snap.
- * Primary: 24" stud spacing when within STUD_ASSIST_DIST; secondary: 6" grid.
- * Returns both the snapped X and whether it hit a stud line.
+ * Clamp to structurally valid range (edges, other windows), then snap.
+ * Door zone is not excluded so windows can be placed over/above the door if desired.
+ * Primary: nearest valid bay center (structural bay midpoint) when within STUD_ASSIST_DIST;
+ * secondary: 6" grid. Bay centers match framing stud layout (24" spacing).
+ * Returns both the snapped X and whether it hit a bay.
  */
 function clampAndSnap(
   x,
@@ -26,34 +55,49 @@ function clampAndSnap(
   windowWidth,
   otherWindows = []
 ) {
-  const halfWindow = windowWidth / 2;
+  if (typeof wallWidth !== "number" || !Number.isFinite(wallWidth) || wallWidth <= 0) {
+    return { x: 0, snappedToStud: false };
+  }
+  const halfWindow = (typeof windowWidth === "number" && Number.isFinite(windowWidth) ? windowWidth : 24) / 2;
   let min = -wallWidth / 2 + halfWindow + EDGE_CLEARANCE;
   let max = wallWidth / 2 - halfWindow - EDGE_CLEARANCE;
-
-  if (doorCenterX != null && doorWidth > 0) {
-    const gap = minGapBetween(windowWidth, doorWidth);
-    const doorHalfW = doorWidth / 2;
-    const blockMin = doorCenterX - doorHalfW - gap / 2;
-    const blockMax = doorCenterX + doorHalfW + gap / 2;
-    if (x > blockMin && x < blockMax) {
-      x = x < doorCenterX ? blockMin : blockMax;
-    }
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min > max) {
+    return { x: 0, snappedToStud: false };
   }
 
   for (const other of otherWindows) {
-    const gap = minGapBetween(windowWidth, other.width);
-    if (x > other.x - gap / 2 && x < other.x + gap / 2) {
-      x = x < other.x ? other.x - gap / 2 : other.x + gap / 2;
+    const ow = typeof other.width === "number" && Number.isFinite(other.width) ? other.width : 24;
+    const ox = typeof other.x === "number" && Number.isFinite(other.x) ? other.x : 0;
+    const gap = minGapBetween(windowWidth, ow);
+    if (x > ox - gap / 2 && x < ox + gap / 2) {
+      x = x < ox ? ox - gap / 2 : ox + gap / 2;
     }
   }
 
-  x = Math.max(min, Math.min(max, x));
+  x = Math.max(min, Math.min(max, Number.isFinite(x) ? x : 0));
 
-  const studSnap = Math.round(x / STUD_SNAP) * STUD_SNAP;
-  if (Math.abs(x - studSnap) <= STUD_ASSIST_DIST) {
-    return { x: studSnap, snappedToStud: true };
+  const validBays = getValidBayCenters(wallWidth, min, max, doorCenterX, doorWidth, windowWidth, otherWindows);
+  if (validBays.length > 0) {
+    let nearest = validBays[0];
+    let bestDist = Math.abs(x - nearest);
+    for (let i = 1; i < validBays.length; i++) {
+      const d = Math.abs(x - validBays[i]);
+      if (Number.isFinite(d) && d < bestDist) {
+        bestDist = d;
+        nearest = validBays[i];
+      }
+    }
+    if (Number.isFinite(nearest) && bestDist <= STUD_ASSIST_DIST) {
+      const snapped = Math.max(min, Math.min(max, nearest));
+      const out = Number.isFinite(snapped) ? snapped : Math.max(min, Math.min(max, 0));
+      return { x: out, snappedToStud: true };
+    }
   }
-  return { x: Math.round(x / GRID_SNAP) * GRID_SNAP, snappedToStud: false };
+
+  const gridSnap = Math.round(x / GRID_SNAP) * GRID_SNAP;
+  const snapped = Math.max(min, Math.min(max, Number.isFinite(gridSnap) ? gridSnap : 0));
+  const out = Number.isFinite(snapped) ? snapped : Math.max(min, Math.min(max, 0));
+  return { x: out, snappedToStud: false };
 }
 
 const ELEMENT_ID = (wallId, index) => `window-${wallId}-${index}`;
@@ -134,8 +178,9 @@ export default function Window({
     canvas.onpointerleave = cleanup;
   };
 
+  const safeX = Number.isFinite(x) ? x : 0;
   return (
-    <group position={[x, windowCenterY, 0.5 * exteriorZSign]} castShadow>
+    <group position={[safeX, windowCenterY, 0.5 * exteriorZSign]} castShadow>
       <mesh
         position={[0, 0, 0.1]}
         onPointerDown={onPointerDown}

@@ -41,6 +41,8 @@ export default function DraggableDoor({
   trimMat,
   exteriorZSign = 1,
   windowOpenings = [],
+  isTrapezoidWall = false,
+  doorBottomY,
 }) {
   const { camera, raycaster, gl } = useThree();
   const { isDraggingElement, setIsDraggingElement, setSelectedElementId } = useBuilder();
@@ -98,7 +100,7 @@ export default function DraggableDoor({
         <boxGeometry args={[doorWidth + 6, wallHeight, 0.5]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
-      <DoorFrame doorType={doorType} wallHeight={wallHeight} doorWidth={doorWidth} doorHeight={doorHeight} trimMat={trimMat} exteriorZSign={exteriorZSign} />
+      <DoorFrame doorType={doorType} wallHeight={wallHeight} doorWidth={doorWidth} doorHeight={doorHeight} trimMat={trimMat} exteriorZSign={exteriorZSign} isTrapezoidWall={isTrapezoidWall} doorBottomY={doorBottomY} />
     </group>
   );
 }

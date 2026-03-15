@@ -9,7 +9,7 @@ const WINDOW_TYPE_OPTIONS = [
 ];
 
 export default function WindowSelector() {
-  const { windows, setWindows, windowPositions, windowTypes, setWindowType, addWindow, removeWindow } = useConfigurator();
+  const { windows, setWindows, windowPositions, windowTypes, setWindowType, addWindow, removeWindow, windowTypeFitsWall } = useConfigurator();
   const [showLayout, setShowLayout] = useState(false);
 
   return (
@@ -39,21 +39,25 @@ export default function WindowSelector() {
                       >
                         <span>{x}"</span>
                         <span className="flex gap-0.5">
-                          {WINDOW_TYPE_OPTIONS.map(({ label, type }) => (
-                            <button
-                              key={type}
-                              type="button"
-                              onClick={() => setWindowType(wallId, i, type)}
-                              className={`px-1.5 py-0.5 rounded text-xs transition-colors ${
-                                currentType === type
-                                  ? "bg-[#2A7F7F] text-white"
-                                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                              }`}
-                              title={label}
-                            >
-                              {label}
-                            </button>
-                          ))}
+                          {WINDOW_TYPE_OPTIONS.map(({ label, type }) => {
+                            const fits = windowTypeFitsWall(wallId, type);
+                            return (
+                              <button
+                                key={type}
+                                type="button"
+                                onClick={() => fits && setWindowType(wallId, i, type)}
+                                disabled={!fits}
+                                className={`px-1.5 py-0.5 rounded text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                  currentType === type
+                                    ? "bg-[#2A7F7F] text-white"
+                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                }`}
+                                title={!fits ? "Window type does not fit this wall" : label}
+                              >
+                                {label}
+                              </button>
+                            );
+                          })}
                         </span>
                         <button
                           type="button"

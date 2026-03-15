@@ -28,7 +28,7 @@ const WINDOW_TYPE_OPTIONS = [
 ];
 
 function WindowPanel({ wallIds }) {
-  const { windowPositions, windowTypes, setWindowType, addWindow, removeWindow } = useConfigurator();
+  const { windowPositions, windowTypes, setWindowType, addWindow, removeWindow, canAddWindow, windowTypeFitsWall } = useConfigurator();
   return (
     <div className="space-y-2">
       {wallIds.map((wallId) => (
@@ -44,7 +44,13 @@ function WindowPanel({ wallIds }) {
                 <button type="button" onClick={() => removeWindow(wallId, i)} className="text-red-500 hover:text-red-700" aria-label="Remove">×</button>
               </span>
             ))}
-            <button type="button" onClick={() => addWindow(wallId)} className="btn-option btn-option-inactive px-2 py-1 text-xs">
+            <button
+              type="button"
+              onClick={() => addWindow(wallId)}
+              disabled={!canAddWindow(wallId)}
+              className="btn-option btn-option-inactive px-2 py-1 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+              title={!canAddWindow(wallId) ? "No room for another window on this wall" : undefined}
+            >
               + Add
             </button>
           </div>
@@ -56,20 +62,25 @@ function WindowPanel({ wallIds }) {
                   <div key={i} className="flex items-center gap-2">
                     <span className="text-[10px] text-gray-400 w-6">#{i + 1}</span>
                     <span className="flex gap-1">
-                      {WINDOW_TYPE_OPTIONS.map(({ label, type }) => (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() => setWindowType(wallId, i, type)}
-                          className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
-                            currentType === type
-                              ? "bg-[#2A7F7F] text-white"
-                              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      ))}
+                      {WINDOW_TYPE_OPTIONS.map(({ label, type }) => {
+                        const fits = windowTypeFitsWall(wallId, type);
+                        return (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => fits && setWindowType(wallId, i, type)}
+                            disabled={!fits}
+                            className={`px-2 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                              currentType === type
+                                ? "bg-[#2A7F7F] text-white"
+                                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                            }`}
+                            title={!fits ? "Window type does not fit this wall" : undefined}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
                     </span>
                   </div>
                 );

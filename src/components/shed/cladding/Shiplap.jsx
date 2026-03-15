@@ -1,7 +1,7 @@
 /**
  * Log-lap cladding - Horizontal wooden boards with rounded front profile.
  * Boards run horizontally, overlap the board below, stack vertically.
- * Warm cedar tone with ±5% brightness variation.
+ * Supports rectangular walls (height) or trapezoid (heightAtStart, heightAtEnd, yCenter).
  */
 import { useMemo, useRef, useEffect } from "react";
 import * as THREE from "three";
@@ -15,20 +15,53 @@ const CLADDING_OFFSET = 0.2;
 
 const OPENING_MARGIN = 2;
 
+function getTrapezoidXRangeAtY(width, heightAtStart, heightAtEnd, yCenter, y) {
+  const yTopLeft = heightAtStart - yCenter;
+  const yTopRight = heightAtEnd - yCenter;
+  const yMin = Math.min(yTopLeft, yTopRight);
+  const yMax = Math.max(yTopLeft, yTopRight);
+  if (y <= yMin) return { xLeft: -width / 2, xRight: width / 2 };
+  if (y > yMax) return null;
+  const slope = (yTopRight - yTopLeft) / width;
+  if (Math.abs(slope) < 1e-6) return { xLeft: -width / 2, xRight: width / 2 };
+  const xAtY = (y - yTopLeft) / slope - width / 2;
+  if (yTopLeft < yTopRight) return { xLeft: xAtY, xRight: width / 2 };
+  return { xLeft: -width / 2, xRight: xAtY };
+}
+
+function getGableXRangeAtY(width, eaveHeight, peakHeight, yCenter, y) {
+  const yEave = eaveHeight - yCenter;
+  const yPeak = peakHeight - yCenter;
+  if (y <= yEave) return { xLeft: -width / 2, xRight: width / 2 };
+  if (y > yPeak) return null;
+  const rise = peakHeight - eaveHeight;
+  if (rise <= 0) return { xLeft: -width / 2, xRight: width / 2 };
+  const halfW = (yPeak - y) / rise * (width / 2);
+  return { xLeft: -halfW, xRight: halfW };
+}
+
 const Shiplap = ({
   width,
   height,
+  heightAtStart,
+  heightAtEnd,
+  eaveHeight,
+  peakHeight,
+  yCenter,
   windowOpenings = [],
   doorOpening = null,
   claddingOpacity = 1,
-  exteriorZSign = 1, // +1 = exterior at +Z, -1 = exterior at -Z (per wall rotation)
+  exteriorZSign = 1,
 }) => {
   const meshRef0 = useRef();
   const meshRef1 = useRef();
   const meshRef2 = useRef();
   const plateThickness = 1.5;
-  const studHeight = height - plateThickness * 2;
+  const isTrapezoid = typeof heightAtStart === "number" && typeof heightAtEnd === "number" && typeof yCenter === "number";
+  const isGable = typeof eaveHeight === "number" && typeof peakHeight === "number" && typeof yCenter === "number";
 
+  const studHeight = isTrapezoid ? Math.max(heightAtStart, heightAtEnd) - plateThickness * 2 : isGable ? peakHeight - plateThickness * 2 : height - plateThickness * 2;
+  const halfStudH = studHeight / 2;
   const doorBottom = -height / 2;
   const doorTop = doorOpening ? -height / 2 + doorOpening.height : -height / 2;
   const doorMinX = doorOpening ? doorOpening.x - doorOpening.width / 2 - OPENING_MARGIN : 0;
@@ -36,9 +69,53 @@ const Shiplap = ({
 
   const flatCladdingInstances = useMemo(() => {
     const rows = [];
-    const halfStudH = studHeight / 2;
-    for (let y = -halfStudH + VISIBLE_COVERAGE / 2; y <= halfStudH - VISIBLE_COVERAGE / 2 + 0.1; y += VISIBLE_COVERAGE - OVERLAP) {
-      let segs = [{ start: -width / 2, end: width / 2 }];
+    const step = VISIBLE_COVERAGE - OVERLAP;
+    const yStart = isTrapezoid || isGable ? -yCenter + VISIBLE_COVERAGE / 2 : -halfStudH + VISIBLE_COVERAGE / 2;
+    const yMaxWallTrap = isTrapezoid ? Math.max(heightAtStart, heightAtEnd) - yCenter : null;
+    const yMaxWallGable = isGable ? peakHeight - yCenter : null;
+
+    let rowYValues;
+    if (isTrapezoid) {
+      const yTopRowCenter = yMaxWallTrap - VISIBLE_COVERAGE / 2;
+      rowYValues = [];
+      for (let y = yStart; y < yTopRowCenter - 0.01; y += step) rowYValues.push(y);
+      if (rowYValues.length === 0 || rowYValues[rowYValues.length - 1] < yTopRowCenter - 0.01) {
+        rowYValues.push(yTopRowCenter);
+      }
+    } else if (isGable) {
+      const yTopRowCenter = yMaxWallGable - VISIBLE_COVERAGE / 2;
+      rowYValues = [];
+      for (let y = yStart; y < yTopRowCenter - 0.01; y += step) rowYValues.push(y);
+      if (rowYValues.length === 0 || rowYValues[rowYValues.length - 1] < yTopRowCenter - 0.01) {
+        rowYValues.push(yTopRowCenter);
+      }
+    } else {
+      const yEnd = halfStudH - VISIBLE_COVERAGE / 2 + 0.1;
+      rowYValues = [];
+      for (let y = yStart; y <= yEnd; y += step) rowYValues.push(y);
+    }
+
+    for (const y of rowYValues) {
+      let xLeft, xRight;
+      if (isTrapezoid) {
+        const yBoardTop = y + VISIBLE_COVERAGE / 2;
+        if (yBoardTop > yMaxWallTrap) continue;
+        const range = getTrapezoidXRangeAtY(width, heightAtStart, heightAtEnd, yCenter, yBoardTop);
+        if (!range) continue;
+        xLeft = range.xLeft;
+        xRight = range.xRight;
+      } else if (isGable) {
+        const yBoardTop = y + VISIBLE_COVERAGE / 2;
+        if (yBoardTop > yMaxWallGable) continue;
+        const range = getGableXRangeAtY(width, eaveHeight, peakHeight, yCenter, yBoardTop);
+        if (!range) continue;
+        xLeft = range.xLeft;
+        xRight = range.xRight;
+      } else {
+        xLeft = -width / 2;
+        xRight = width / 2;
+      }
+      let segs = [{ start: xLeft, end: xRight }];
       const cut = (minX, maxX) => {
         segs = segs.flatMap((s) => {
           if (s.end <= minX || s.start >= maxX) return [s];
@@ -48,9 +125,7 @@ const Shiplap = ({
           return out;
         });
       };
-      if (doorOpening && y >= doorBottom && y <= doorTop) {
-        cut(doorMinX, doorMaxX);
-      }
+      if (doorOpening && y >= doorBottom && y <= doorTop) cut(doorMinX, doorMaxX);
       windowOpenings.forEach(({ x: wx, y: wy, width: ww, height: wh }) => {
         const centerY = wy ?? 0;
         const winMinY = centerY - wh / 2 - 2;
@@ -62,19 +137,15 @@ const Shiplap = ({
         .map((s) => ({ xCenter: (s.start + s.end) / 2, segWidth: s.end - s.start }));
       rows.push({ y, segments });
     }
+
     const list = [];
     rows.forEach((row, rowIdx) => {
       row.segments.forEach((seg) => {
-        list.push({
-          x: seg.xCenter,
-          y: row.y,
-          width: seg.segWidth,
-          rowIndex: rowIdx,
-        });
+        list.push({ x: seg.xCenter, y: row.y, width: seg.segWidth, rowIndex: rowIdx });
       });
     });
     return list;
-  }, [studHeight, width, doorOpening, doorTop, doorBottom, doorMinX, doorMaxX, windowOpenings]);
+  }, [isTrapezoid, isGable, width, height, heightAtStart, heightAtEnd, eaveHeight, peakHeight, yCenter, studHeight, halfStudH, doorOpening, doorTop, doorBottom, doorMinX, doorMaxX, windowOpenings]);
 
   const instancesByShade = useMemo(() => {
     const groups = [[], [], []];
