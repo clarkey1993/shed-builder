@@ -148,6 +148,7 @@ export default function Window({
       <WindowFrame
         windowWidth={windowWidth}
         windowHeight={windowHeight}
+        windowType={windowType}
         positionX={0}
         positionY={0}
         trimMat={trimMat}

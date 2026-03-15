@@ -2,9 +2,14 @@ import { useState } from "react";
 import { useConfigurator } from "../../context/ConfiguratorContext";
 
 const WALL_LABELS = { front: "Front", back: "Back", left: "Left", right: "Right" };
+const WINDOW_TYPE_OPTIONS = [
+  { label: "Standard", type: "STANDARD" },
+  { label: "Security", type: "SECURITY" },
+  { label: "Double", type: "DOUBLE" },
+];
 
 export default function WindowSelector() {
-  const { windows, setWindows, windowPositions, addWindow, removeWindow } = useConfigurator();
+  const { windows, setWindows, windowPositions, windowTypes, setWindowType, addWindow, removeWindow } = useConfigurator();
   const [showLayout, setShowLayout] = useState(false);
 
   return (
@@ -24,23 +29,43 @@ export default function WindowSelector() {
             {["front", "back", "left", "right"].map((wallId) => (
               <div key={wallId}>
                 <h4 className="text-[0.8125rem] font-medium text-gray-600 mb-2">{WALL_LABELS[wallId]} Wall</h4>
-                <div className="flex flex-wrap gap-1.5">
-                  {(windowPositions[wallId] || []).map((x, i) => (
-                    <span
-                      key={i}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white text-gray-700 text-sm border border-gray-200 hover:border-gray-300 transition-colors"
-                    >
-                      {x}"
-                      <button
-                        type="button"
-                        onClick={() => removeWindow(wallId, i)}
-                        className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded p-0.5 transition-colors"
-                        aria-label="Remove"
+                <div className="flex flex-wrap gap-1.5 items-center">
+                  {(windowPositions[wallId] || []).map((x, i) => {
+                    const currentType = (windowTypes[wallId] || [])[i] || "STANDARD";
+                    return (
+                      <span
+                        key={i}
+                        className="inline-flex flex-wrap items-center gap-1.5 px-2 py-1 rounded-md bg-white text-gray-700 text-sm border border-gray-200 hover:border-gray-300 transition-colors"
                       >
-                        ×
-                      </button>
-                    </span>
-                  ))}
+                        <span>{x}"</span>
+                        <span className="flex gap-0.5">
+                          {WINDOW_TYPE_OPTIONS.map(({ label, type }) => (
+                            <button
+                              key={type}
+                              type="button"
+                              onClick={() => setWindowType(wallId, i, type)}
+                              className={`px-1.5 py-0.5 rounded text-xs transition-colors ${
+                                currentType === type
+                                  ? "bg-[#2A7F7F] text-white"
+                                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                              }`}
+                              title={label}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeWindow(wallId, i)}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded p-0.5 transition-colors"
+                          aria-label="Remove"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    );
+                  })}
                   <button
                     type="button"
                     onClick={() => addWindow(wallId)}

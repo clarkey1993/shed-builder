@@ -7,10 +7,12 @@ import shedData from "../../shedData.json";
 const WINDOW_RULES = {
   STANDARD: { width: 24, height: 24 },
   SECURITY: { width: 24, height: 12 },
+  /** Two side-by-side panels with central mullion; combined nominal width 50" (24 + 2 + 24), height 24". */
+  DOUBLE: { width: 50, height: 24 },
 };
 
 /**
- * @param {string} windowType - "STANDARD" | "SECURITY"
+ * @param {string} windowType - "STANDARD" | "SECURITY" | "DOUBLE"
  * @returns {{ width: number, height: number }}
  */
 export function getWindowDimensions(windowType) {

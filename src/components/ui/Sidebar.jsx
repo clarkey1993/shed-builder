@@ -21,25 +21,61 @@ const STEP_CONFIG = [
 
 const WALL_LABELS = { front: "Front", back: "Back", left: "Left", right: "Right" };
 
+const WINDOW_TYPE_OPTIONS = [
+  { label: "Standard", type: "STANDARD" },
+  { label: "Security", type: "SECURITY" },
+  { label: "Double", type: "DOUBLE" },
+];
+
 function WindowPanel({ wallIds }) {
-  const { windowPositions, addWindow, removeWindow } = useConfigurator();
+  const { windowPositions, windowTypes, setWindowType, addWindow, removeWindow } = useConfigurator();
   return (
     <div className="space-y-2">
       {wallIds.map((wallId) => (
-        <div key={wallId} className="flex flex-wrap gap-1.5 items-center">
-          <span className="text-xs text-gray-500 w-14">{WALL_LABELS[wallId]}:</span>
-          {(windowPositions[wallId] || []).map((x, i) => (
-            <span
-              key={i}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white text-gray-700 text-xs border border-gray-200"
-            >
-              {x}"
-              <button type="button" onClick={() => removeWindow(wallId, i)} className="text-red-500 hover:text-red-700" aria-label="Remove">×</button>
-            </span>
-          ))}
-          <button type="button" onClick={() => addWindow(wallId)} className="btn-option btn-option-inactive px-2 py-1 text-xs">
-            + Add
-          </button>
+        <div key={wallId} className="space-y-1.5">
+          <div className="flex flex-wrap gap-1.5 items-center">
+            <span className="text-xs text-gray-500 w-14">{WALL_LABELS[wallId]}:</span>
+            {(windowPositions[wallId] || []).map((x, i) => (
+              <span
+                key={i}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white text-gray-700 text-xs border border-gray-200"
+              >
+                {x}"
+                <button type="button" onClick={() => removeWindow(wallId, i)} className="text-red-500 hover:text-red-700" aria-label="Remove">×</button>
+              </span>
+            ))}
+            <button type="button" onClick={() => addWindow(wallId)} className="btn-option btn-option-inactive px-2 py-1 text-xs">
+              + Add
+            </button>
+          </div>
+          {(windowPositions[wallId] || []).length > 0 && (
+            <div className="pl-14 space-y-1.5">
+              {(windowPositions[wallId] || []).map((x, i) => {
+                const currentType = (windowTypes[wallId] || [])[i] || "STANDARD";
+                return (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="text-[10px] text-gray-400 w-6">#{i + 1}</span>
+                    <span className="flex gap-1">
+                      {WINDOW_TYPE_OPTIONS.map(({ label, type }) => (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => setWindowType(wallId, i, type)}
+                          className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                            currentType === type
+                              ? "bg-[#2A7F7F] text-white"
+                              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       ))}
     </div>

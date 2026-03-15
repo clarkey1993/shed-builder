@@ -21,11 +21,16 @@ const OPENING_TOP_BOTTOM_MARGIN = 2;
 
 // Customer-facing visual: size from nominal unit with a slim trim allowance so it reads close to quoted size.
 const VISUAL_TRIM_ALLOWANCE = 0.5;
+// Double window: central vertical divider between the two glazing panels (inches).
+const MULLION_WIDTH = 2;
+// Gap between glazing and mullion each side (inches).
+const MULLION_GLAZING_GAP = 0.5;
 
 const TRIM_Z = 0.2 + EXTERIOR_TRIM_THICKNESS / 2;
 const WindowFrame = ({
   windowWidth,
   windowHeight,
+  windowType = "STANDARD",
   positionX,
   positionY,
   trimMat,
@@ -54,28 +59,34 @@ const WindowFrame = ({
   const openingW = windowWidth + OPENING_SIDE_MARGIN * 2;
   const openingH = windowHeight + OPENING_TOP_BOTTOM_MARGIN * 2;
 
-  // Customer-facing visual: nominal unit + slim trim allowance so it reads close to quoted 24×24.
+  // Customer-facing glazing: nominal + slim allowance so it reads close to 24×24.
   const visualW = windowWidth + 2 * VISUAL_TRIM_ALLOWANCE;
   const visualH = windowHeight + 2 * VISUAL_TRIM_ALLOWANCE;
-  const fullVisualW = visualW + 2 * tw;
-  const fullVisualH = visualH + 2 * tw;
+  // Trim bridges from glazing edge to cutout edge so no gap shows; outer trim envelope = opening.
+  const topBottomTrimHeight = Math.max(tw, openingH / 2 - visualH / 2);
+  const sideTrimWidth = Math.max(tw, openingW / 2 - visualW / 2);
   const glazingZ = trimZ - tt * 0.6;
   const GLAZING_COLOR = "#f5f5f0";
+
+  // DOUBLE layout: glazing panels with gap each side of mullion (dimensions unchanged).
+  const doubleGlazingWidth = (visualW - MULLION_WIDTH - 2 * MULLION_GLAZING_GAP) / 2;
+  const doubleLeftCenterX = -(MULLION_WIDTH / 2 + MULLION_GLAZING_GAP + doubleGlazingWidth / 2);
+  const doubleRightCenterX = MULLION_WIDTH / 2 + MULLION_GLAZING_GAP + doubleGlazingWidth / 2;
 
   const outlineLine = useMemo(() => {
     const m = 2;
     const outlineZ = 0.5 * exteriorZSign;
     const pts = [
-      new THREE.Vector3(-fullVisualW / 2 - m, fullVisualH / 2 + m, outlineZ),
-      new THREE.Vector3(fullVisualW / 2 + m, fullVisualH / 2 + m, outlineZ),
-      new THREE.Vector3(fullVisualW / 2 + m, -fullVisualH / 2 - m, outlineZ),
-      new THREE.Vector3(-fullVisualW / 2 - m, -fullVisualH / 2 - m, outlineZ),
-      new THREE.Vector3(-fullVisualW / 2 - m, fullVisualH / 2 + m, outlineZ),
+      new THREE.Vector3(-openingW / 2 - m, openingH / 2 + m, outlineZ),
+      new THREE.Vector3(openingW / 2 + m, openingH / 2 + m, outlineZ),
+      new THREE.Vector3(openingW / 2 + m, -openingH / 2 - m, outlineZ),
+      new THREE.Vector3(-openingW / 2 - m, -openingH / 2 - m, outlineZ),
+      new THREE.Vector3(-openingW / 2 - m, openingH / 2 + m, outlineZ),
     ];
     const geom = new THREE.BufferGeometry().setFromPoints(pts);
     const mat = new THREE.LineBasicMaterial({ color: 0x4a5568 });
     return new THREE.Line(geom, mat);
-  }, [fullVisualW, fullVisualH, exteriorZSign]);
+  }, [openingW, openingH, exteriorZSign]);
 
   return (
     <group position={[positionX, positionY, 0]}>
@@ -97,35 +108,49 @@ const WindowFrame = ({
           </Box>
         </>
       )}
-      {/* Customer-facing glazing: nominal unit + slim allowance, centered */}
-      <Box args={[visualW, visualH, 0.08]} position={[0, 0, glazingZ]} castShadow>
-        <meshStandardMaterial color={GLAZING_COLOR} roughness={0.4} metalness={0.02} />
-      </Box>
-      {/* Customer-facing trim: sized from nominal + allowance */}
+      {/* Customer-facing glazing: single panel or double with central mullion */}
+      {windowType === "DOUBLE" ? (
+        <>
+          <Box args={[doubleGlazingWidth, visualH, 0.08]} position={[doubleLeftCenterX, 0, glazingZ]} castShadow>
+            <meshStandardMaterial color={GLAZING_COLOR} roughness={0.4} metalness={0.02} />
+          </Box>
+          <Box args={[doubleGlazingWidth, visualH, 0.08]} position={[doubleRightCenterX, 0, glazingZ]} castShadow>
+            <meshStandardMaterial color={GLAZING_COLOR} roughness={0.4} metalness={0.02} />
+          </Box>
+          <Box args={[MULLION_WIDTH, visualH, tt]} position={[0, 0, glazingZ + tt / 2]} castShadow>
+            <meshStandardMaterial color="#8b7355" roughness={0.75} metalness={0.02} />
+          </Box>
+        </>
+      ) : (
+        <Box args={[visualW, visualH, 0.08]} position={[0, 0, glazingZ]} castShadow>
+          <meshStandardMaterial color={GLAZING_COLOR} roughness={0.4} metalness={0.02} />
+        </Box>
+      )}
+      {/* Trim bridges glazing → cutout: no gap; outer envelope = opening */}
       <Box
-        args={[visualW, tw, tt]}
-        position={[0, visualH / 2 + tw / 2, trimZ]}
+        args={[openingW, topBottomTrimHeight, tt]}
+        position={[0, visualH / 2 + topBottomTrimHeight / 2, trimZ]}
         castShadow
       >
         {trim}
       </Box>
       <Box
-        args={[visualW, tw, tt]}
-        position={[0, -visualH / 2 - tw / 2, trimZ]}
+        args={[openingW, topBottomTrimHeight, tt]}
+        position={[0, -visualH / 2 - topBottomTrimHeight / 2, trimZ]}
         castShadow
       >
         {trim}
       </Box>
       <Box
-        args={[tw, visualH, tt]}
-        position={[-visualW / 2 - tw / 2, 0, trimZ]}
+        args={[sideTrimWidth, openingH, tt]}
+        position={[-visualW / 2 - sideTrimWidth / 2, 0, trimZ]}
         castShadow
       >
         {trim}
       </Box>
       <Box
-        args={[tw, visualH, tt]}
-        position={[visualW / 2 + tw / 2, 0, trimZ]}
+        args={[sideTrimWidth, openingH, tt]}
+        position={[visualW / 2 + sideTrimWidth / 2, 0, trimZ]}
         castShadow
       >
         {trim}
