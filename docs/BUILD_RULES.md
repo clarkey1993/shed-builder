@@ -47,7 +47,7 @@ Reference file: `src/config/shedRules.js`
 
 Door height follows wall height.
 
-**Current implementation:** `getDoorDimensions()` reads frame widths from `shedData.json` `door_widths`: single standard 31, single workshop 33.5; double standard 60, double workshop 62.5. These are full frame widths, not clear openings. Door is fixed to front wall center (no drag). Internal partition doors also use `getDoorDimensions()`.
+**Current implementation:** `getDoorDimensions()` reads frame widths from `shedData.json` `door_widths`: single 31 / 33.75 (standard/workshop), stable 39.75, double 60 / 62.75, double_with_windows 61. These are full frame widths, not clear openings. Door is fixed to front wall center (no drag). Internal partition doors also use `getDoorDimensions()`.
 
 ---
 

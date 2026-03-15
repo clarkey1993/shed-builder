@@ -25,7 +25,7 @@ export function getWindowDimensions(windowType) {
  * usableWallHeight = wallHeight - topPlateThickness - 1.
  *
  * @param {Object} opts
- * @param {string} opts.doorType - "single" | "double"
+ * @param {string} opts.doorType - "single" | "stable" | "double" | "double_with_windows"
  * @param {string} opts.wallHeightType - "standard" | "workshop"
  * @param {number} opts.wallHeight - wall height in inches (single source for nominal door height)
  * @param {number} [opts.topPlateThickness] - optional plate thickness in inches; falls back to shedData.framing.upright_middles_thickness_x

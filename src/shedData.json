@@ -26,11 +26,19 @@
   "door_widths": {
     "single": {
       "standard": 31,
-      "workshop": 33.5
+      "workshop": 33.75
+    },
+    "stable": {
+      "standard": 39.75,
+      "workshop": 39.75
     },
     "double": {
       "standard": 60,
-      "workshop": 62.5
+      "workshop": 62.75
+    },
+    "double_with_windows": {
+      "standard": 61,
+      "workshop": 61
     }
   },
   "floor_widths_inches": {

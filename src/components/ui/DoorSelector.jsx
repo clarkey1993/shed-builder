@@ -3,8 +3,9 @@ import { useConfigurator } from "../../context/ConfiguratorContext";
 const OPTIONS = [
   { name: "No Door", type: "none" },
   { name: "Single Door", type: "single" },
-  { name: "Double Door", type: "double" },
   { name: "Stable Door", type: "stable" },
+  { name: "Double Door", type: "double" },
+  { name: "Double with Windows", type: "double_with_windows" },
 ];
 
 export default function DoorSelector() {
