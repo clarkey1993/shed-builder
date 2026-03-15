@@ -6,6 +6,7 @@ import { useBuilder } from "../../../context/BuilderContext";
 import { useShedTexturesContext } from "../../../context/ShedTextureContext";
 import { getWindowDimensions, getDoorDimensions } from "../../../systems/openings/getOpeningDimensions";
 import DoorFrame from "../doors/DoorFrame";
+import DraggableDoor from "../doors/DraggableDoor";
 import Window from "../windows/Window";
 import WallGrid from "../grid/WallGrid";
 import Shiplap from "../cladding/Shiplap";
@@ -24,6 +25,7 @@ const Wall = ({
   doorType,
   claddingOpacity = 1,
   exteriorZSign = 1,
+  doorCenterX = 0,
 }) => {
   const wallGroupRef = useRef();
   const dragPlaneRef = useRef();
@@ -31,17 +33,26 @@ const Wall = ({
   const { selectedElementId, showFraming, debugShowDragPlanes } = useBuilder();
   const { woodFraming } = useShedTexturesContext();
 
+  const plateThickness = shedConfig.framing.upright_middles_thickness_x;
   const doorDims = hasDoor && doorType !== "none"
-    ? getDoorDimensions({ doorType, wallHeightType: wallHeightType || "standard", wallHeight: height })
+    ? getDoorDimensions({
+        doorType,
+        wallHeightType: wallHeightType || "standard",
+        wallHeight: height,
+        topPlateThickness: plateThickness,
+      })
     : null;
   const doorHalfWidth = doorDims ? doorDims.width / 2 : 0;
-  const plateThickness = shedConfig.framing.upright_middles_thickness_x;
   const framingZOffset = -exteriorZSign * (plateThickness / 2 + 0.75);
   const trimMat = <meshStandardMaterial color={WARM_CEDAR} roughness={0.75} metalness={0.02} />;
 
   const showWallGrid = selectedElementId !== null && selectedElementId.startsWith(`window-${wallId}-`);
 
-  // Shared rule: window top = one board below top plate, then one shiplap board lower
+  const effectiveDoorCenterX = wallId === "front" ? doorCenterX : 0;
+  const doorOpening = doorDims
+    ? { x: effectiveDoorCenterX, width: doorDims.width, height: doorDims.height }
+    : null;
+
   const WINDOW_BOARD_HEIGHT = 4;
   const SHIPLAP_BOARD_OFFSET = 5;
   const windowsForFraming = useMemo(
@@ -55,9 +66,9 @@ const Wall = ({
     [windowPositions, windowTypes, wallId, height]
   );
   const doorsForFraming = useMemo(() => {
-    if (!doorDims) return [];
-    return [{ x: 0, width: doorDims.width, height: doorDims.height }];
-  }, [doorDims]);
+    if (!doorOpening) return [];
+    return [{ x: doorOpening.x, width: doorOpening.width, height: doorOpening.height }];
+  }, [doorOpening]);
 
   return (
     <group ref={wallGroupRef} position={position} rotation={rotation}>
@@ -96,15 +107,25 @@ const Wall = ({
         width={width}
         height={height}
         windowOpenings={windowsForFraming}
-        hasDoor={hasDoor && doorType !== "none"}
-        doorHalfWidth={doorHalfWidth}
-        doorHeight={doorDims?.height}
+        doorOpening={doorOpening}
         claddingOpacity={claddingOpacity}
         exteriorZSign={exteriorZSign}
       />
 
-      {hasDoor && doorType !== "none" && (
-        <DoorFrame doorType={doorType} wallHeight={height} trimMat={trimMat} exteriorZSign={exteriorZSign} />
+      {hasDoor && doorType !== "none" && wallId === "front" && doorDims && (
+        <DraggableDoor
+          wallId={wallId}
+          wallWidth={width}
+          wallHeight={height}
+          doorType={doorType}
+          doorWidth={doorDims.width}
+          doorHeight={doorDims.height}
+          dragPlaneRef={dragPlaneRef}
+          wallGroupRef={wallGroupRef}
+          trimMat={trimMat}
+          exteriorZSign={exteriorZSign}
+          windowOpenings={windowsForFraming}
+        />
       )}
       {windowPositions.map((x, i) => (
         <Window
@@ -115,7 +136,8 @@ const Wall = ({
           index={i}
           wallWidth={width}
           hasDoor={hasDoor && doorType !== "none"}
-          doorHalfWidth={doorHalfWidth}
+          doorCenterX={doorOpening?.x ?? null}
+          doorWidth={doorDims?.width ?? 0}
           showFraming={showFraming}
           onPositionChange={setWindowPosition}
           dragPlaneRef={dragPlaneRef}

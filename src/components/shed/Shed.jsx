@@ -11,7 +11,7 @@ const CORNER_TRIM_WIDTH = 3;
 const CORNER_TRIM_THICKNESS = 1.5;
 
 const Shed = () => {
-  const { shedConfig, roofStyle, windowPositions, doorType } = useConfigurator();
+  const { shedConfig, roofStyle, windowPositions, doorType, frontDoorCenterX } = useConfigurator();
   const { viewMode, partitions } = useInteriorView();
   const { builderStep, showFraming, debugShowFullShed } = useBuilder();
   const { woodFraming, osb } = useShedTexturesContext();
@@ -97,7 +97,20 @@ const Shed = () => {
 
       {/* Walls: sides use local +Z=exterior; front/back use exteriorZSign=-1; framing derived from exteriorZSign */}
       {showFrontWall && (
-        <Wall wallId="front" width={floorWidth} height={wallHeight} position={[0, wallHeight / 2, -floorDepth / 2]} rotation={[0, 0, 0]} exteriorZSign={-1} hasDoor doorType={doorType} windowPositions={windowPositions.front} claddingOpacity={claddingOpacity} />
+        <Wall
+          wallId="front"
+          width={floorWidth}
+          height={wallHeight}
+          position={[0, wallHeight / 2, -floorDepth / 2]}
+          rotation={[0, 0, 0]}
+          exteriorZSign={-1}
+          hasDoor
+          doorType={doorType}
+          windowPositions={windowPositions.front}
+          claddingOpacity={claddingOpacity}
+          // Front door horizontal position (inches)
+          doorCenterX={frontDoorCenterX}
+        />
       )}
       {showBackWall && (
         <Wall wallId="back" width={floorWidth} height={wallHeight} position={[0, wallHeight / 2, floorDepth / 2]} rotation={[0, Math.PI, 0]} exteriorZSign={-1} windowPositions={windowPositions.back} claddingOpacity={claddingOpacity} />

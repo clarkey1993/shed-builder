@@ -23,13 +23,17 @@ function variedCedarColor(index) {
   return base.clone().multiplyScalar(shade).getStyle();
 }
 
-const DoorFrame = ({ doorType, wallHeight, trimMat, exteriorZSign = 1 }) => {
-  const { wallHeightType } = useConfigurator();
-  const { width: doorWidth, height: doorHeight } = getDoorDimensions({
+const DoorFrame = ({ doorType, wallHeight, doorWidth: doorWidthProp, doorHeight: doorHeightProp, trimMat, exteriorZSign = 1 }) => {
+  const { wallHeightType, shedConfig } = useConfigurator();
+  const topPlateThickness = shedConfig.framing.upright_middles_thickness_x;
+  const dims = getDoorDimensions({
     doorType,
     wallHeightType: wallHeightType || "standard",
     wallHeight,
+    topPlateThickness,
   });
+  const doorWidth = doorWidthProp ?? dims.width;
+  const doorHeight = doorHeightProp ?? dims.height;
   const doorTop = -wallHeight / 2 + doorHeight;
   const doorBottom = -wallHeight / 2;
   const doorCenterY = -wallHeight / 2 + doorHeight / 2;

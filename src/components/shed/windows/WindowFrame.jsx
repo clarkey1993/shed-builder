@@ -15,12 +15,25 @@ const STUD_WIDTH = 3;
 const EXTERIOR_TRIM_WIDTH = 1.25;
 const EXTERIOR_TRIM_THICKNESS = 0.6;
 const TRIM_OFFSET = 0.4;
+const HORIZONTAL_TRIM_OFFSET = TRIM_OFFSET + 1; // widen side trim to match bottom reveal given cladding cut margins
 
 const TRIM_Z = 0.2 + EXTERIOR_TRIM_THICKNESS / 2;
-const WindowFrame = ({ windowWidth, windowHeight, positionX, positionY, trimMat, isHovered = false, isSelected = false, exteriorZSign = 1, showStructuralFraming = false }) => {
+const WindowFrame = ({
+  windowWidth,
+  windowHeight,
+  positionX,
+  positionY,
+  trimMat,
+  isHovered = false,
+  isSelected = false,
+  isSnappedToStud = false,
+  exteriorZSign = 1,
+  showStructuralFraming = false,
+}) => {
   const trimZ = TRIM_Z * exteriorZSign;
   const { woodFraming } = useShedTexturesContext();
-  const emissive = (isHovered || isSelected) ? 0.08 : 0;
+  const emissive =
+    isHovered || isSelected ? 0.08 : isSnappedToStud ? 0.12 : 0;
   const WARM_CEDAR = "#e0b890";
   const STRUCTURAL_TIMBER = "#5c4033";
   const structuralFramingMat = woodFraming ? (
@@ -76,10 +89,10 @@ const WindowFrame = ({ windowWidth, windowHeight, positionX, positionY, trimMat,
       <Box args={[fullW, tw, tt]} position={[0, -windowHeight / 2 - TRIM_OFFSET - tw / 2, trimZ]} castShadow>
         {trim}
       </Box>
-      <Box args={[tw, fullH, tt]} position={[-windowWidth / 2 - TRIM_OFFSET - tw / 2, 0, trimZ]} castShadow>
+      <Box args={[tw, fullH, tt]} position={[-windowWidth / 2 - HORIZONTAL_TRIM_OFFSET - tw / 2, 0, trimZ]} castShadow>
         {trim}
       </Box>
-      <Box args={[tw, fullH, tt]} position={[windowWidth / 2 + TRIM_OFFSET + tw / 2, 0, trimZ]} castShadow>
+      <Box args={[tw, fullH, tt]} position={[windowWidth / 2 + HORIZONTAL_TRIM_OFFSET + tw / 2, 0, trimZ]} castShadow>
         {trim}
       </Box>
     </group>

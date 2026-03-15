@@ -13,13 +13,13 @@ const OVERLAP = 0.12;
 const BASE_CEDAR = "#d2a679";
 const CLADDING_OFFSET = 0.2;
 
+const OPENING_MARGIN = 2;
+
 const Shiplap = ({
   width,
   height,
   windowOpenings = [],
-  hasDoor,
-  doorHalfWidth,
-  doorHeight,
+  doorOpening = null,
   claddingOpacity = 1,
   exteriorZSign = 1, // +1 = exterior at +Z, -1 = exterior at -Z (per wall rotation)
 }) => {
@@ -28,11 +28,11 @@ const Shiplap = ({
   const meshRef2 = useRef();
   const plateThickness = 1.5;
   const studHeight = height - plateThickness * 2;
-  // Fallback only when callers omit doorHeight (e.g. malformed props). Normal path: Wall passes doorDims.height.
-  const doorH = doorHeight ?? 6 * 12;
 
-  const doorTop = -height / 2 + doorH;
   const doorBottom = -height / 2;
+  const doorTop = doorOpening ? -height / 2 + doorOpening.height : -height / 2;
+  const doorMinX = doorOpening ? doorOpening.x - doorOpening.width / 2 - OPENING_MARGIN : 0;
+  const doorMaxX = doorOpening ? doorOpening.x + doorOpening.width / 2 + OPENING_MARGIN : 0;
 
   const flatCladdingInstances = useMemo(() => {
     const rows = [];
@@ -48,9 +48,8 @@ const Shiplap = ({
           return out;
         });
       };
-      if (doorHalfWidth > 0 && y >= doorBottom && y <= doorTop) {
-        // TODO: move margin (2) into getOpeningClearance()
-        cut(-doorHalfWidth - 2, doorHalfWidth + 2);
+      if (doorOpening && y >= doorBottom && y <= doorTop) {
+        cut(doorMinX, doorMaxX);
       }
       windowOpenings.forEach(({ x: wx, y: wy, width: ww, height: wh }) => {
         const centerY = wy ?? 0;
@@ -75,7 +74,7 @@ const Shiplap = ({
       });
     });
     return list;
-  }, [studHeight, width, doorHalfWidth, doorTop, doorBottom, windowOpenings]);
+  }, [studHeight, width, doorOpening, doorTop, doorBottom, doorMinX, doorMaxX, windowOpenings]);
 
   const instancesByShade = useMemo(() => {
     const groups = [[], [], []];

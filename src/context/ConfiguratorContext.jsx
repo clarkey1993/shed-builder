@@ -13,6 +13,8 @@ export const ConfiguratorProvider = ({ children }) => {
   // Window type per wall/index: STANDARD (default) | SECURITY. Dimensions unchanged until aligned with shedRules.
   const [windowTypes, setWindowTypes] = useState({ front: [], back: [], left: [], right: [] });
   const [doorType, setDoorType] = useState("none");
+  // Front door horizontal center (inches from wall center); 0 = centered
+  const [frontDoorCenterX, setFrontDoorCenterX] = useState(0);
 
   // Initialize shedConfig with precise dimensions and framing
   const [shedConfig, setShedConfig] = useState(() => ({
@@ -109,6 +111,8 @@ export const ConfiguratorProvider = ({ children }) => {
         removeWindow,
         doorType,
         setDoorType,
+        frontDoorCenterX,
+        setFrontDoorCenterX,
         shedConfig, // Expose shedConfig
       }}
     >

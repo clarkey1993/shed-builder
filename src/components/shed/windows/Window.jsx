@@ -7,40 +7,71 @@ import { getWindowDimensions } from "../../../systems/openings/getOpeningDimensi
 import { GRID_SNAP, STUD_SNAP, STUD_ASSIST_DIST } from "../../../systems/snapping/snapRules";
 
 const STUD = 3;
+const EDGE_CLEARANCE = STUD * 2; // 6" of timber between opening edge and wall corner
 
 function minGapBetween(windowWidth, otherWidth) {
   return windowWidth / 2 + otherWidth / 2 + STUD * 2;
 }
 
 /**
- * Clamp to valid range (edges, door, other windows), then snap.
+ * Clamp to structurally valid range (edges, door, other windows), then snap.
  * Primary: 24" stud spacing when within STUD_ASSIST_DIST; secondary: 6" grid.
+ * Returns both the snapped X and whether it hit a stud line.
  */
-function clampAndSnap(x, wallWidth, doorHalfWidth, windowWidth, otherWindows = []) {
-  const hw = windowWidth / 2 + STUD;
-  let min = -wallWidth / 2 + hw, max = wallWidth / 2 - hw;
-  if (doorHalfWidth > 0) {
-    const doorMin = -doorHalfWidth - hw, doorMax = doorHalfWidth + hw;
-    if (x >= doorMin && x <= doorMax) x = x < 0 ? doorMin : doorMax;
+function clampAndSnap(
+  x,
+  wallWidth,
+  doorCenterX,
+  doorWidth,
+  windowWidth,
+  otherWindows = []
+) {
+  const halfWindow = windowWidth / 2;
+  let min = -wallWidth / 2 + halfWindow + EDGE_CLEARANCE;
+  let max = wallWidth / 2 - halfWindow - EDGE_CLEARANCE;
+
+  if (doorCenterX != null && doorWidth > 0) {
+    const gap = minGapBetween(windowWidth, doorWidth);
+    const doorHalfW = doorWidth / 2;
+    const blockMin = doorCenterX - doorHalfW - gap / 2;
+    const blockMax = doorCenterX + doorHalfW + gap / 2;
+    if (x > blockMin && x < blockMax) {
+      x = x < doorCenterX ? blockMin : blockMax;
+    }
   }
+
   for (const other of otherWindows) {
     const gap = minGapBetween(windowWidth, other.width);
     if (x > other.x - gap / 2 && x < other.x + gap / 2) {
       x = x < other.x ? other.x - gap / 2 : other.x + gap / 2;
     }
   }
+
   x = Math.max(min, Math.min(max, x));
+
   const studSnap = Math.round(x / STUD_SNAP) * STUD_SNAP;
-  if (Math.abs(x - studSnap) <= STUD_ASSIST_DIST) return studSnap;
-  return Math.round(x / GRID_SNAP) * GRID_SNAP;
+  if (Math.abs(x - studSnap) <= STUD_ASSIST_DIST) {
+    return { x: studSnap, snappedToStud: true };
+  }
+  return { x: Math.round(x / GRID_SNAP) * GRID_SNAP, snappedToStud: false };
 }
 
 const ELEMENT_ID = (wallId, index) => `window-${wallId}-${index}`;
 
 export default function Window({
-  x, windowCenterY, wallId, index, wallWidth,
-  hasDoor, doorHalfWidth, showFraming = false,
-  onPositionChange, dragPlaneRef, wallGroupRef, trimMat,
+  x,
+  windowCenterY,
+  wallId,
+  index,
+  wallWidth,
+  hasDoor,
+  doorCenterX = null,
+  doorWidth = 0,
+  showFraming = false,
+  onPositionChange,
+  dragPlaneRef,
+  wallGroupRef,
+  trimMat,
   windowType = "STANDARD",
   otherWindows = [],
   exteriorZSign = 1,
@@ -50,6 +81,7 @@ export default function Window({
   const ptr = useRef(new THREE.Vector2());
   const didDragRef = useRef(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [snappedToStud, setSnappedToStud] = useState(false);
 
   const elementId = ELEMENT_ID(wallId, index);
   const isSelected = selectedElementId === elementId;
@@ -67,10 +99,19 @@ export default function Window({
       if (hits.length) {
         const pt = hits[0].point.clone();
         wallGroupRef.current.worldToLocal(pt);
-        onPositionChange(wallId, index, clampAndSnap(pt.x, wallWidth, hasDoor ? doorHalfWidth : 0, windowWidth, otherWindows));
+        const result = clampAndSnap(
+          pt.x,
+          wallWidth,
+          hasDoor ? doorCenterX : null,
+          hasDoor ? doorWidth : 0,
+          windowWidth,
+          otherWindows
+        );
+        setSnappedToStud(result.snappedToStud);
+        onPositionChange(wallId, index, result.x);
       }
     },
-    [camera, raycaster, gl, dragPlaneRef, wallGroupRef, wallWidth, hasDoor, doorHalfWidth, onPositionChange, wallId, index, windowWidth, otherWindows]
+    [camera, raycaster, gl, dragPlaneRef, wallGroupRef, wallWidth, hasDoor, doorCenterX, doorWidth, onPositionChange, wallId, index, windowWidth, otherWindows]
   );
 
   const onPointerDown = (e) => {
@@ -112,6 +153,7 @@ export default function Window({
         trimMat={trimMat}
         isHovered={isHovered}
         isSelected={isSelected}
+        isSnappedToStud={snappedToStud}
         exteriorZSign={exteriorZSign}
         showStructuralFraming={showFraming}
       />

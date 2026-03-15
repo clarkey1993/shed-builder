@@ -18,14 +18,23 @@ export function getWindowDimensions(windowType) {
 }
 
 /**
- * Door dimensions. Height = wallHeight (shed rule: 66" standard, 70" workshop; pent uses wall-specific height).
+ * Door dimensions.
+ * Height is clamped so the door never exceeds the usable wall height:
+ * usableWallHeight = wallHeight - topPlateThickness - 1.
+ *
  * @param {Object} opts
  * @param {string} opts.doorType - "single" | "double"
  * @param {string} opts.wallHeightType - "standard" | "workshop"
- * @param {number} opts.wallHeight - wall height in inches (single source for door height)
+ * @param {number} opts.wallHeight - wall height in inches (single source for nominal door height)
+ * @param {number} [opts.topPlateThickness] - optional plate thickness in inches; falls back to shedData.framing.upright_middles_thickness_x
  * @returns {{ width: number, height: number }}
  */
-export function getDoorDimensions({ doorType, wallHeightType, wallHeight }) {
+export function getDoorDimensions({ doorType, wallHeightType, wallHeight, topPlateThickness }) {
   const width = shedData.door_widths[doorType]?.[wallHeightType] ?? shedData.door_widths.single?.standard ?? 31;
-  return { width, height: wallHeight };
+  const plate = typeof topPlateThickness === "number"
+    ? topPlateThickness
+    : shedData.framing.upright_middles_thickness_x;
+  const usableWallHeight = Math.max(0, wallHeight - plate - 1);
+  const height = Math.min(wallHeight, usableWallHeight);
+  return { width, height };
 }
