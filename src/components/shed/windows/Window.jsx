@@ -7,12 +7,15 @@ import { getWindowDimensions } from "../../../systems/openings/getOpeningDimensi
 import { GRID_SNAP, STUD_SNAP, STUD_ASSIST_DIST } from "../../../systems/snapping/snapRules";
 
 const STUD = 3;
-const CLADDING_BOARD_HEIGHT = 5;
 
 function minGapBetween(windowWidth, otherWidth) {
   return windowWidth / 2 + otherWidth / 2 + STUD * 2;
 }
 
+/**
+ * Clamp to valid range (edges, door, other windows), then snap.
+ * Primary: 24" stud spacing when within STUD_ASSIST_DIST; secondary: 6" grid.
+ */
 function clampAndSnap(x, wallWidth, doorHalfWidth, windowWidth, otherWindows = []) {
   const hw = windowWidth / 2 + STUD;
   let min = -wallWidth / 2 + hw, max = wallWidth / 2 - hw;
@@ -35,7 +38,7 @@ function clampAndSnap(x, wallWidth, doorHalfWidth, windowWidth, otherWindows = [
 const ELEMENT_ID = (wallId, index) => `window-${wallId}-${index}`;
 
 export default function Window({
-  x, wallId, index, wallWidth, wallHeight,
+  x, windowCenterY, wallId, index, wallWidth,
   hasDoor, doorHalfWidth, showFraming = false,
   onPositionChange, dragPlaneRef, wallGroupRef, trimMat,
   windowType = "STANDARD",
@@ -52,8 +55,6 @@ export default function Window({
   const isSelected = selectedElementId === elementId;
   const dims = getWindowDimensions(windowType);
   const { width: windowWidth, height: windowHeight } = dims;
-  const windowTop = wallHeight / 2 - CLADDING_BOARD_HEIGHT;
-  const windowCenterY = windowTop - windowHeight / 2;
 
   const updateX = useCallback(
     (clientX, clientY) => {

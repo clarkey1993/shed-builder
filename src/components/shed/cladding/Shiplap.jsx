@@ -52,10 +52,11 @@ const Shiplap = ({
         // TODO: move margin (2) into getOpeningClearance()
         cut(-doorHalfWidth - 2, doorHalfWidth + 2);
       }
-      windowOpenings.forEach(({ x: wx, width: ww, height: wh }) => {
-        // TODO: move margins (2 vertical, 3 horizontal) into getOpeningClearance()
-        const winHalfH = wh / 2 + 2;
-        if (y >= -winHalfH && y <= winHalfH) cut(wx - ww / 2 - 3, wx + ww / 2 + 3);
+      windowOpenings.forEach(({ x: wx, y: wy, width: ww, height: wh }) => {
+        const centerY = wy ?? 0;
+        const winMinY = centerY - wh / 2 - 2;
+        const winMaxY = centerY + wh / 2 + 2;
+        if (y >= winMinY && y <= winMaxY) cut(wx - ww / 2 - 3, wx + ww / 2 + 3);
       });
       const segments = segs
         .filter((s) => s.end - s.start > 1)

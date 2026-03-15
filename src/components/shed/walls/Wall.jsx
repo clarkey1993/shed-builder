@@ -41,14 +41,16 @@ const Wall = ({
 
   const showWallGrid = selectedElementId !== null && selectedElementId.startsWith(`window-${wallId}-`);
 
-  const BOARD_HEIGHT = 5;
+  // Shared rule: window top = one board below top plate, then one shiplap board lower
+  const WINDOW_BOARD_HEIGHT = 4;
+  const SHIPLAP_BOARD_OFFSET = 5;
   const windowsForFraming = useMemo(
     () => windowPositions.map((x, i) => {
       const type = (windowTypes[wallId] || [])[i] || "STANDARD";
       const dims = getWindowDimensions(type);
-      const windowTop = height / 2 - BOARD_HEIGHT;
-      const centerY = windowTop - dims.height / 2;
-      return { x, y: centerY, width: dims.width, height: dims.height };
+      const windowTop = height / 2 - WINDOW_BOARD_HEIGHT - SHIPLAP_BOARD_OFFSET;
+      const windowCenterY = windowTop - dims.height / 2;
+      return { x, y: windowCenterY, width: dims.width, height: dims.height };
     }),
     [windowPositions, windowTypes, wallId, height]
   );
@@ -75,10 +77,10 @@ const Wall = ({
       {showFraming && (
         <group position={[0, 0, framingZOffset]}>
           <Box args={[width, plateThickness, plateThickness]} position={[0, height / 2 - plateThickness / 2, 0]} castShadow>
-            {woodFraming ? <meshStandardMaterial map={woodFraming} roughness={0.7} metalness={0} color="#8b4513" /> : <meshStandardMaterial color="#8B4513" roughness={0.7} />}
+            {woodFraming ? <meshStandardMaterial map={woodFraming} roughness={0.8} metalness={0.02} color="#5c4033" /> : <meshStandardMaterial color="#5c4033" roughness={0.8} />}
           </Box>
           <Box args={[width, plateThickness, plateThickness]} position={[0, -height / 2 + plateThickness / 2, 0]} castShadow>
-            {woodFraming ? <meshStandardMaterial map={woodFraming} roughness={0.7} metalness={0} color="#8b4513" /> : <meshStandardMaterial color="#8B4513" roughness={0.7} />}
+            {woodFraming ? <meshStandardMaterial map={woodFraming} roughness={0.8} metalness={0.02} color="#5c4033" /> : <meshStandardMaterial color="#5c4033" roughness={0.8} />}
           </Box>
           <WallFraming
             wallWidth={width}
@@ -108,10 +110,10 @@ const Wall = ({
         <Window
           key={i}
           x={x}
+          windowCenterY={windowsForFraming[i]?.y ?? 0}
           wallId={wallId}
           index={i}
           wallWidth={width}
-          wallHeight={height}
           hasDoor={hasDoor && doorType !== "none"}
           doorHalfWidth={doorHalfWidth}
           showFraming={showFraming}

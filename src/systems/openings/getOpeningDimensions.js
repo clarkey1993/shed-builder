@@ -18,10 +18,11 @@ export function getWindowDimensions(windowType) {
 }
 
 /**
+ * Door dimensions. Height = wallHeight (shed rule: 66" standard, 70" workshop; pent uses wall-specific height).
  * @param {Object} opts
  * @param {string} opts.doorType - "single" | "double"
  * @param {string} opts.wallHeightType - "standard" | "workshop"
- * @param {number} opts.wallHeight - wall height in inches
+ * @param {number} opts.wallHeight - wall height in inches (single source for door height)
  * @returns {{ width: number, height: number }}
  */
 export function getDoorDimensions({ doorType, wallHeightType, wallHeight }) {

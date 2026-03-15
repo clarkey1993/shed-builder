@@ -36,10 +36,11 @@ const WallFraming = ({ wallWidth, wallHeight, windows, doors, framingConfig }) =
     mesh.instanceMatrix.needsUpdate = true;
   }, [studPositions]);
 
+  const structuralColor = "#5c4033";
   const framingMat = woodFraming ? (
-    <meshStandardMaterial map={woodFraming} roughness={0.7} metalness={0.1} color="#8b4513" />
+    <meshStandardMaterial map={woodFraming} roughness={0.8} metalness={0.02} color={structuralColor} />
   ) : (
-    <meshStandardMaterial color="#8B4513" roughness={0.7} metalness={0.1} />
+    <meshStandardMaterial color={structuralColor} roughness={0.8} metalness={0.02} />
   );
 
   return (

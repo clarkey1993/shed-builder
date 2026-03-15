@@ -26,7 +26,8 @@ const Shed = () => {
   const showCornerPosts = debugShowFullShed || showSideWalls || showBackWall;
   const showRoof = debugShowFullShed || builderStep === "ROOF";
   const showPartitions = builderStep === "INTERIOR" && isInterior;
-  const claddingOpacity = (isInterior || builderStep === "INTERIOR") && !debugShowFullShed ? 0.15 : 1;
+  const baseCladdingOpacity = (isInterior || builderStep === "INTERIOR") && !debugShowFullShed ? 0.15 : 1;
+  const claddingOpacity = showFraming && baseCladdingOpacity === 1 ? 0.82 : baseCladdingOpacity;
   const roofOpacity = isInterior && !debugShowFullShed ? 0 : 1;
 
   const floorWidth = shedConfig.width;
