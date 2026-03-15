@@ -15,12 +15,12 @@ const STUD_WIDTH = 3;
 const EXTERIOR_TRIM_WIDTH = 1.25;
 const EXTERIOR_TRIM_THICKNESS = 0.6;
 
-// Shiplap cutout margins from cladding logic (effective structural opening vs nominal window size)
-const OPENING_SIDE_MARGIN = 3; // matches Shiplap horizontal cut: wx ± ww/2 ± 3
-const OPENING_TOP_BOTTOM_MARGIN = 2; // matches Shiplap vertical cut: wy ± wh/2 ± 2
+// Structural opening (for reference only; cladding/framing use their own margins - do not change).
+const OPENING_SIDE_MARGIN = 3;
+const OPENING_TOP_BOTTOM_MARGIN = 2;
 
-// Equal overlap of the visible white unit over the structural opening on all four sides.
-const OPENING_OVERLAP = 0.4;
+// Customer-facing visual: size from nominal unit with a slim trim allowance so it reads close to quoted size.
+const VISUAL_TRIM_ALLOWANCE = 0.5;
 
 const TRIM_Z = 0.2 + EXTERIOR_TRIM_THICKNESS / 2;
 const WindowFrame = ({
@@ -50,28 +50,32 @@ const WindowFrame = ({
   const tw = EXTERIOR_TRIM_WIDTH;
   const tt = EXTERIOR_TRIM_THICKNESS;
 
-  // Structural opening size used in cladding (window opening + margins), used here to size the visible unit.
+  // Structural opening (unchanged; used by cladding/framing elsewhere - not for customer-facing size).
   const openingW = windowWidth + OPENING_SIDE_MARGIN * 2;
   const openingH = windowHeight + OPENING_TOP_BOTTOM_MARGIN * 2;
 
-  // Visible white unit (outer edges of trim) is slightly larger than the structural opening on all sides.
-  const fullW = openingW + 2 * OPENING_OVERLAP;
-  const fullH = openingH + 2 * OPENING_OVERLAP;
+  // Customer-facing visual: nominal unit + slim trim allowance so it reads close to quoted 24×24.
+  const visualW = windowWidth + 2 * VISUAL_TRIM_ALLOWANCE;
+  const visualH = windowHeight + 2 * VISUAL_TRIM_ALLOWANCE;
+  const fullVisualW = visualW + 2 * tw;
+  const fullVisualH = visualH + 2 * tw;
+  const glazingZ = trimZ - tt * 0.6;
+  const GLAZING_COLOR = "#f5f5f0";
 
   const outlineLine = useMemo(() => {
     const m = 2;
     const outlineZ = 0.5 * exteriorZSign;
     const pts = [
-      new THREE.Vector3(-fullW / 2 - m, fullH / 2 + m, outlineZ),
-      new THREE.Vector3(fullW / 2 + m, fullH / 2 + m, outlineZ),
-      new THREE.Vector3(fullW / 2 + m, -fullH / 2 - m, outlineZ),
-      new THREE.Vector3(-fullW / 2 - m, -fullH / 2 - m, outlineZ),
-      new THREE.Vector3(-fullW / 2 - m, fullH / 2 + m, outlineZ),
+      new THREE.Vector3(-fullVisualW / 2 - m, fullVisualH / 2 + m, outlineZ),
+      new THREE.Vector3(fullVisualW / 2 + m, fullVisualH / 2 + m, outlineZ),
+      new THREE.Vector3(fullVisualW / 2 + m, -fullVisualH / 2 - m, outlineZ),
+      new THREE.Vector3(-fullVisualW / 2 - m, -fullVisualH / 2 - m, outlineZ),
+      new THREE.Vector3(-fullVisualW / 2 - m, fullVisualH / 2 + m, outlineZ),
     ];
     const geom = new THREE.BufferGeometry().setFromPoints(pts);
     const mat = new THREE.LineBasicMaterial({ color: 0x4a5568 });
     return new THREE.Line(geom, mat);
-  }, [fullW, fullH, exteriorZSign]);
+  }, [fullVisualW, fullVisualH, exteriorZSign]);
 
   return (
     <group position={[positionX, positionY, 0]}>
@@ -93,31 +97,35 @@ const WindowFrame = ({
           </Box>
         </>
       )}
-      {/* Finished visible white unit: even overlap over the structural opening on all four sides */}
+      {/* Customer-facing glazing: nominal unit + slim allowance, centered */}
+      <Box args={[visualW, visualH, 0.08]} position={[0, 0, glazingZ]} castShadow>
+        <meshStandardMaterial color={GLAZING_COLOR} roughness={0.4} metalness={0.02} />
+      </Box>
+      {/* Customer-facing trim: sized from nominal + allowance */}
       <Box
-        args={[fullW, tw, tt]}
-        position={[0, openingH / 2 + OPENING_OVERLAP + tw / 2, trimZ]}
+        args={[visualW, tw, tt]}
+        position={[0, visualH / 2 + tw / 2, trimZ]}
         castShadow
       >
         {trim}
       </Box>
       <Box
-        args={[fullW, tw, tt]}
-        position={[0, -openingH / 2 - tw / 2, trimZ]}
+        args={[visualW, tw, tt]}
+        position={[0, -visualH / 2 - tw / 2, trimZ]}
         castShadow
       >
         {trim}
       </Box>
       <Box
-        args={[tw, fullH, tt]}
-        position={[-openingW / 2 - OPENING_OVERLAP - tw / 2, 0, trimZ]}
+        args={[tw, visualH, tt]}
+        position={[-visualW / 2 - tw / 2, 0, trimZ]}
         castShadow
       >
         {trim}
       </Box>
       <Box
-        args={[tw, fullH, tt]}
-        position={[openingW / 2 + OPENING_OVERLAP + tw / 2, 0, trimZ]}
+        args={[tw, visualH, tt]}
+        position={[visualW / 2 + tw / 2, 0, trimZ]}
         castShadow
       >
         {trim}
