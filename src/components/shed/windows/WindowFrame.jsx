@@ -14,8 +14,13 @@ const STUD_WIDTH = 3;
 // Finished exterior trim (customer) - slim casing around the opening
 const EXTERIOR_TRIM_WIDTH = 1.25;
 const EXTERIOR_TRIM_THICKNESS = 0.6;
-const TRIM_OFFSET = 0.4;
-const HORIZONTAL_TRIM_OFFSET = TRIM_OFFSET + 1; // widen side trim to match bottom reveal given cladding cut margins
+
+// Shiplap cutout margins from cladding logic (effective structural opening vs nominal window size)
+const OPENING_SIDE_MARGIN = 3; // matches Shiplap horizontal cut: wx ± ww/2 ± 3
+const OPENING_TOP_BOTTOM_MARGIN = 2; // matches Shiplap vertical cut: wy ± wh/2 ± 2
+
+// Equal overlap of the visible white unit over the structural opening on all four sides.
+const OPENING_OVERLAP = 0.4;
 
 const TRIM_Z = 0.2 + EXTERIOR_TRIM_THICKNESS / 2;
 const WindowFrame = ({
@@ -42,10 +47,16 @@ const WindowFrame = ({
     <meshStandardMaterial color={STRUCTURAL_TIMBER} roughness={0.8} metalness={0.02} emissive="#111" emissiveIntensity={emissive} />
   );
   const trim = trimMat || <meshStandardMaterial color={WARM_CEDAR} roughness={0.72} metalness={0.02} />;
-  const fullW = windowWidth + TRIM_OFFSET * 2;
-  const fullH = windowHeight + TRIM_OFFSET * 2;
   const tw = EXTERIOR_TRIM_WIDTH;
   const tt = EXTERIOR_TRIM_THICKNESS;
+
+  // Structural opening size used in cladding (window opening + margins), used here to size the visible unit.
+  const openingW = windowWidth + OPENING_SIDE_MARGIN * 2;
+  const openingH = windowHeight + OPENING_TOP_BOTTOM_MARGIN * 2;
+
+  // Visible white unit (outer edges of trim) is slightly larger than the structural opening on all sides.
+  const fullW = openingW + 2 * OPENING_OVERLAP;
+  const fullH = openingH + 2 * OPENING_OVERLAP;
 
   const outlineLine = useMemo(() => {
     const m = 2;
@@ -82,17 +93,33 @@ const WindowFrame = ({
           </Box>
         </>
       )}
-      {/* Finished exterior trim: always visible; slim casing for customer view */}
-      <Box args={[fullW, tw, tt]} position={[0, windowHeight / 2 + TRIM_OFFSET + tw / 2, trimZ]} castShadow>
+      {/* Finished visible white unit: even overlap over the structural opening on all four sides */}
+      <Box
+        args={[fullW, tw, tt]}
+        position={[0, openingH / 2 + OPENING_OVERLAP + tw / 2, trimZ]}
+        castShadow
+      >
         {trim}
       </Box>
-      <Box args={[fullW, tw, tt]} position={[0, -windowHeight / 2 - TRIM_OFFSET - tw / 2, trimZ]} castShadow>
+      <Box
+        args={[fullW, tw, tt]}
+        position={[0, -openingH / 2 - tw / 2, trimZ]}
+        castShadow
+      >
         {trim}
       </Box>
-      <Box args={[tw, fullH, tt]} position={[-windowWidth / 2 - HORIZONTAL_TRIM_OFFSET - tw / 2, 0, trimZ]} castShadow>
+      <Box
+        args={[tw, fullH, tt]}
+        position={[-openingW / 2 - OPENING_OVERLAP - tw / 2, 0, trimZ]}
+        castShadow
+      >
         {trim}
       </Box>
-      <Box args={[tw, fullH, tt]} position={[windowWidth / 2 + HORIZONTAL_TRIM_OFFSET + tw / 2, 0, trimZ]} castShadow>
+      <Box
+        args={[tw, fullH, tt]}
+        position={[openingW / 2 + OPENING_OVERLAP + tw / 2, 0, trimZ]}
+        castShadow
+      >
         {trim}
       </Box>
     </group>
