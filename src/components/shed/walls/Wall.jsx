@@ -153,15 +153,14 @@ const Wall = ({
         const topAtX = getWallHeightAtX(prof, width, x) - yCenter;
         windowTop = topAtX - WINDOW_BOARD_HEIGHT - SHIPLAP_BOARD_OFFSET;
       } else if (isGable) {
-        const topAtX = getWallHeightAtX(profile, width, x) - yCenter;
-        windowTop = topAtX - WINDOW_BOARD_HEIGHT - SHIPLAP_BOARD_OFFSET;
+        windowTop = eaveHeight - yCenter - WINDOW_BOARD_HEIGHT - SHIPLAP_BOARD_OFFSET;
       } else {
         windowTop = height / 2 - WINDOW_BOARD_HEIGHT - SHIPLAP_BOARD_OFFSET;
       }
       const windowCenterY = windowTop - dims.height / 2;
       return { x, y: windowCenterY, width: dims.width, height: dims.height };
     }),
-    [windowPositions, windowTypes, wallId, height, isTrapezoidal, isGable, profile, profileForTrapezoid, width, yCenter]
+    [windowPositions, windowTypes, wallId, height, isTrapezoidal, isGable, eaveHeight, profile, profileForTrapezoid, width, yCenter]
   );
   const doorsForFraming = useMemo(() => {
     if (!doorOpening) return [];
@@ -180,7 +179,19 @@ const Wall = ({
 
   return (
     <group ref={wallGroupRef} position={position} rotation={rotation}>
-      <WallGrid wallId={wallId} width={width} height={height} visible={showWallGrid} />
+      <WallGrid
+        wallId={wallId}
+        width={width}
+        height={height}
+        visible={showWallGrid}
+        isTrapezoidal={isTrapezoidal}
+        isGable={isGable}
+        heightAtStart={isTrapezoidal ? hStart : undefined}
+        heightAtEnd={isTrapezoidal ? hEnd : undefined}
+        eaveHeight={isGable ? eaveHeight : undefined}
+        peakHeight={isGable ? peakHeight : undefined}
+        yCenter={(isTrapezoidal || isGable) ? yCenter : undefined}
+      />
       <mesh ref={dragPlaneRef} position={[0, 0, 0.2 * exteriorZSign]}>
         {wallGeometry ? (
           <primitive object={wallGeometry} attach="geometry" />
