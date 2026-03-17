@@ -4,101 +4,9 @@ import { useThree } from "@react-three/fiber";
 import WindowFrame from "./WindowFrame";
 import { useBuilder } from "../../../context/BuilderContext";
 import { getWindowDimensions } from "../../../systems/openings/getOpeningDimensions";
-import { EDGE_CLEARANCE, minGapBetween, STUD } from "../../../systems/openings/windowPlacement";
-import { GRID_SNAP, STUD_SNAP, STUD_ASSIST_DIST } from "../../../systems/snapping/snapRules";
+import { EDGE_CLEARANCE, minGapBetween, STUD, clampAndSnap } from "../../../systems/openings/windowPlacement";
 
-/**
- * Bay centers = midpoints between consecutive studs.
- * Uses same layout as generateWallFraming: stud spacing STUD_SNAP (24"), studs at
- * -halfW + i * actualSpacing, so bay centers at -halfW + (i + 0.5) * actualSpacing.
- * Returns only centers that are within [min, max] and clear of other windows.
- * Door zone is not excluded so windows can be placed over/above the door if desired.
- */
-function getValidBayCenters(wallWidth, min, max, doorCenterX, doorWidth, windowWidth, otherWindows) {
-  if (typeof wallWidth !== "number" || !Number.isFinite(wallWidth) || wallWidth <= 0) return [];
-  const halfW = wallWidth / 2;
-  const numStuds = Math.floor(wallWidth / STUD_SNAP) + 1;
-  if (numStuds <= 1) return [];
-  const actualSpacing = wallWidth / (numStuds - 1);
-  if (!Number.isFinite(actualSpacing)) return [];
-  const centers = [];
-  for (let i = 0; i < numStuds - 1; i++) {
-    const c = -halfW + (i + 0.5) * actualSpacing;
-    if (!Number.isFinite(c) || c < min || c > max) continue;
-    let blocked = false;
-    for (const other of otherWindows) {
-      const ow = typeof other.width === "number" && Number.isFinite(other.width) ? other.width : 24;
-      const ox = typeof other.x === "number" && Number.isFinite(other.x) ? other.x : 0;
-      const gap = minGapBetween(windowWidth, ow);
-      if (c >= ox - gap / 2 && c <= ox + gap / 2) {
-        blocked = true;
-        break;
-      }
-    }
-    if (!blocked) centers.push(c);
-  }
-  return centers.filter((c) => Number.isFinite(c));
-}
-
-/**
- * Clamp to structurally valid range (edges, other windows), then snap.
- * Door zone is not excluded so windows can be placed over/above the door if desired.
- * Primary: nearest valid bay center (structural bay midpoint) when within STUD_ASSIST_DIST;
- * secondary: 6" grid. Bay centers match framing stud layout (24" spacing).
- * Returns both the snapped X and whether it hit a bay.
- */
-function clampAndSnap(
-  x,
-  wallWidth,
-  doorCenterX,
-  doorWidth,
-  windowWidth,
-  otherWindows = []
-) {
-  if (typeof wallWidth !== "number" || !Number.isFinite(wallWidth) || wallWidth <= 0) {
-    return { x: 0, snappedToStud: false };
-  }
-  const halfWindow = (typeof windowWidth === "number" && Number.isFinite(windowWidth) ? windowWidth : 24) / 2;
-  let min = -wallWidth / 2 + halfWindow + EDGE_CLEARANCE;
-  let max = wallWidth / 2 - halfWindow - EDGE_CLEARANCE;
-  if (!Number.isFinite(min) || !Number.isFinite(max) || min > max) {
-    return { x: 0, snappedToStud: false };
-  }
-
-  for (const other of otherWindows) {
-    const ow = typeof other.width === "number" && Number.isFinite(other.width) ? other.width : 24;
-    const ox = typeof other.x === "number" && Number.isFinite(other.x) ? other.x : 0;
-    const gap = minGapBetween(windowWidth, ow);
-    if (x > ox - gap / 2 && x < ox + gap / 2) {
-      x = x < ox ? ox - gap / 2 : ox + gap / 2;
-    }
-  }
-
-  x = Math.max(min, Math.min(max, Number.isFinite(x) ? x : 0));
-
-  const validBays = getValidBayCenters(wallWidth, min, max, doorCenterX, doorWidth, windowWidth, otherWindows);
-  if (validBays.length > 0) {
-    let nearest = validBays[0];
-    let bestDist = Math.abs(x - nearest);
-    for (let i = 1; i < validBays.length; i++) {
-      const d = Math.abs(x - validBays[i]);
-      if (Number.isFinite(d) && d < bestDist) {
-        bestDist = d;
-        nearest = validBays[i];
-      }
-    }
-    if (Number.isFinite(nearest) && bestDist <= STUD_ASSIST_DIST) {
-      const snapped = Math.max(min, Math.min(max, nearest));
-      const out = Number.isFinite(snapped) ? snapped : Math.max(min, Math.min(max, 0));
-      return { x: out, snappedToStud: true };
-    }
-  }
-
-  const gridSnap = Math.round(x / GRID_SNAP) * GRID_SNAP;
-  const snapped = Math.max(min, Math.min(max, Number.isFinite(gridSnap) ? gridSnap : 0));
-  const out = Number.isFinite(snapped) ? snapped : Math.max(min, Math.min(max, 0));
-  return { x: out, snappedToStud: false };
-}
+// clampAndSnap now lives in windowPlacement.js and is shared with sidebar placement.
 
 const ELEMENT_ID = (wallId, index) => `window-${wallId}-${index}`;
 
@@ -113,6 +21,7 @@ export default function Window({
   doorWidth = 0,
   showFraming = false,
   onPositionChange,
+  onDelete,
   dragPlaneRef,
   wallGroupRef,
   trimMat,
@@ -121,9 +30,10 @@ export default function Window({
   exteriorZSign = 1,
 }) {
   const { camera, raycaster, gl } = useThree();
-  const { setIsDraggingElement, setSelectedElementId, selectedElementId } = useBuilder();
+  const { setIsDraggingElement, setSelectedElementId, selectedElementId, setPointerDownOnInteractive } = useBuilder();
   const ptr = useRef(new THREE.Vector2());
   const didDragRef = useRef(false);
+  const startPosRef = useRef({ x: 0, y: 0 });
   const [isHovered, setIsHovered] = useState(false);
   const [snappedToStud, setSnappedToStud] = useState(false);
 
@@ -131,11 +41,13 @@ export default function Window({
   const isSelected = selectedElementId === elementId;
   const dims = getWindowDimensions(windowType);
   const { width: windowWidth, height: windowHeight } = dims;
+  // Match exterior trim Z from WindowFrame (TRIM_Z * exteriorZSign), then push slightly outward
+  const exteriorTrimZ = (0.2 + 0.6 / 2) * exteriorZSign; // TRIM_Z from WindowFrame.jsx
+  const deleteButtonZ = exteriorTrimZ + 0.3 * exteriorZSign;
 
   const updateX = useCallback(
     (clientX, clientY) => {
       if (!dragPlaneRef?.current || !wallGroupRef?.current) return;
-      didDragRef.current = true;
       const rect = gl.domElement.getBoundingClientRect();
       ptr.current.set((clientX - rect.left) / rect.width * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
       raycaster.setFromCamera(ptr.current, camera);
@@ -162,6 +74,8 @@ export default function Window({
     e.stopPropagation();
     e.target.setPointerCapture(e.pointerId);
     didDragRef.current = false;
+    startPosRef.current = { x: e.clientX, y: e.clientY };
+    setPointerDownOnInteractive(true);
     setSelectedElementId(elementId);
     setIsDraggingElement(true);
     const canvas = gl.domElement;
@@ -171,9 +85,19 @@ export default function Window({
       canvas.onpointerleave = null;
       e.target.releasePointerCapture?.(e.pointerId);
       setIsDraggingElement(false);
-      if (didDragRef.current) setSelectedElementId(null);
     };
-    canvas.onpointermove = (ev) => updateX(ev.clientX, ev.clientY);
+    canvas.onpointermove = (ev) => {
+      const dx = ev.clientX - startPosRef.current.x;
+      const dy = ev.clientY - startPosRef.current.y;
+      const distSq = dx * dx + dy * dy;
+      const DRAG_THRESHOLD_PX = 9; // 3px radius
+      if (!didDragRef.current && distSq > DRAG_THRESHOLD_PX * DRAG_THRESHOLD_PX) {
+        didDragRef.current = true;
+      }
+      if (didDragRef.current) {
+        updateX(ev.clientX, ev.clientY);
+      }
+    };
     canvas.onpointerup = cleanup;
     canvas.onpointerleave = cleanup;
   };
@@ -190,6 +114,18 @@ export default function Window({
         <boxGeometry args={[windowWidth + STUD * 2, windowHeight + STUD * 2, 0.5]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} />
       </mesh>
+      {isSelected && typeof onDelete === "function" && (
+        <mesh
+          position={[windowWidth / 2 + 6, windowHeight / 2 + 6, deleteButtonZ]}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            onDelete(wallId, index);
+          }}
+        >
+          <boxGeometry args={[6, 6, 0.5]} />
+          <meshBasicMaterial color="#ff4b4b" />
+        </mesh>
+      )}
       <WindowFrame
         windowWidth={windowWidth}
         windowHeight={windowHeight}

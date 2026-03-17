@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useMemo, useEffect } from "react";
 import shedData from "../shedData.json";
 import { getWindowDimensions, getDoorDimensions } from "../systems/openings/getOpeningDimensions";
-import { canFitOneMoreWindow, getDefaultWindowPosition, openingFitsWall, clampWindowPositionToValid, minGapBetween } from "../systems/openings/windowPlacement";
+import { canFitOneMoreWindow, getDefaultWindowPosition, openingFitsWall, clampWindowPositionToValid, minGapBetween, clampAndSnap } from "../systems/openings/windowPlacement";
 
 const ConfiguratorContext = createContext();
 
@@ -17,8 +17,16 @@ export const ConfiguratorProvider = ({ children }) => {
   // Window type per wall/index: STANDARD (default) | SECURITY | DOUBLE.
   const [windowTypes, setWindowTypes] = useState({ front: [], back: [], left: [], right: [] });
   const [doorType, setDoorType] = useState("none");
-  // Front door horizontal center (inches from wall center); 0 = centered
+  // Current door wall and horizontal center (inches from wall center); 0 = centered
+  const [doorWallId, setDoorWallId] = useState("front");
   const [frontDoorCenterX, setFrontDoorCenterX] = useState(0);
+
+  // Explicit inclusion flags for walls and roof (decoupled from builderStep)
+  const [includeFrontWall, setIncludeFrontWall] = useState(false);
+  const [includeLeftWall, setIncludeLeftWall] = useState(false);
+  const [includeRightWall, setIncludeRightWall] = useState(false);
+  const [includeBackWall, setIncludeBackWall] = useState(false);
+  const [includeRoof, setIncludeRoof] = useState(false);
 
   // Initialize shedConfig with precise dimensions and framing
   const [shedConfig, setShedConfig] = useState(() => ({
@@ -80,6 +88,40 @@ export const ConfiguratorProvider = ({ children }) => {
 
     setWindowPositions(prev => ({ ...prev, [wallId]: [...(prev[wallId] || []), defaultX] }));
     setWindowTypes(prev => ({ ...prev, [wallId]: [...(prev[wallId] || []), "STANDARD"] }));
+  };
+
+  const addWindowAt = (wallId, targetX, windowType = "STANDARD") => {
+    const wallWidth = (wallId === "front" || wallId === "back") ? shedConfig.width : shedConfig.depth;
+    if (typeof wallWidth !== "number" || !Number.isFinite(wallWidth) || wallWidth <= 0) return;
+    const positions = windowPositions[wallId] || [];
+    const types = windowTypes[wallId] || [];
+    const otherWindows = positions.map((pos, i) => ({
+      x: Number.isFinite(Number(pos)) ? Number(pos) : 0,
+      width: getWindowDimensions(types[i] || "STANDARD").width,
+    }));
+    const dims = getWindowDimensions(windowType);
+    const windowWidth = dims.width;
+    if (!canFitOneMoreWindow(wallWidth, windowWidth, otherWindows)) return;
+
+    const hasDoorOnFront = wallId === "front" && doorType !== "none";
+    const wallHeight = typeof shedConfig.wallHeight === "number" && Number.isFinite(shedConfig.wallHeight) ? shedConfig.wallHeight : 66;
+    const doorWidth = hasDoorOnFront
+      ? getDoorDimensions({ doorType, wallHeightType: wallHeightType || "standard", wallHeight }).width
+      : 0;
+    const doorCenter = hasDoorOnFront && Number.isFinite(Number(frontDoorCenterX)) ? Number(frontDoorCenterX) : null;
+
+    const result = clampAndSnap(
+      targetX,
+      wallWidth,
+      doorCenter,
+      doorWidth,
+      windowWidth,
+      otherWindows
+    );
+
+    const snappedX = result?.x ?? 0;
+    setWindowPositions(prev => ({ ...prev, [wallId]: [...(prev[wallId] || []), snappedX] }));
+    setWindowTypes(prev => ({ ...prev, [wallId]: [...(prev[wallId] || []), windowType] }));
   };
 
   const canAddWindow = useMemo(() => {
@@ -235,6 +277,12 @@ export const ConfiguratorProvider = ({ children }) => {
     }
   }, [shedConfig.width, shedConfig.depth, shedConfig.wallHeight]);
 
+  const placeDoorAt = (wallId, x, type) => {
+    setDoorWallId(wallId);
+    setDoorType(type);
+    setFrontDoorCenterX(x);
+  };
+
   return (
     <ConfiguratorContext.Provider
       value={{
@@ -253,14 +301,28 @@ export const ConfiguratorProvider = ({ children }) => {
         setWindowPosition,
         setWindowType,
         addWindow,
+        addWindowAt,
         removeWindow,
         canAddWindow,
         doorFitsWall,
         windowTypeFitsWall,
         doorType,
         setDoorType,
+        doorWallId,
+        setDoorWallId,
         frontDoorCenterX,
         setFrontDoorCenterX,
+        placeDoorAt,
+        includeFrontWall,
+        setIncludeFrontWall,
+        includeLeftWall,
+        setIncludeLeftWall,
+        includeRightWall,
+        setIncludeRightWall,
+        includeBackWall,
+        setIncludeBackWall,
+        includeRoof,
+        setIncludeRoof,
         shedConfig, // Expose shedConfig
         pentSlopeDirection,
         setPentSlopeDirection,

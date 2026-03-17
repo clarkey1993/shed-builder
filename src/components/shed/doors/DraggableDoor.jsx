@@ -45,17 +45,21 @@ export default function DraggableDoor({
   doorBottomY,
 }) {
   const { camera, raycaster, gl } = useThree();
-  const { isDraggingElement, setIsDraggingElement, setSelectedElementId } = useBuilder();
-  const { frontDoorCenterX, setFrontDoorCenterX } = useConfigurator();
+  const { isDraggingElement, setIsDraggingElement, setSelectedElementId, selectedElementId, setPointerDownOnInteractive } = useBuilder();
+  const { frontDoorCenterX, setFrontDoorCenterX, setDoorType } = useConfigurator();
   const ptr = useRef(new THREE.Vector2());
   const didDragRef = useRef(false);
+  const startPosRef = useRef({ x: 0, y: 0 });
 
   const centerX = wallId === "front" ? frontDoorCenterX : 0;
+  const isSelected = selectedElementId === `door-${wallId}`;
+  // Exterior trim face is at (0.25 + TRIM_T/2) * exteriorZSign = 0.75 * exteriorZSign.
+  // Push delete button slightly outward by 0.35 for clear visibility.
+  const deleteButtonZ = (0.25 + 1 / 2 + 0.35) * exteriorZSign;
 
   const updateX = useCallback(
     (clientX, clientY) => {
       if (!dragPlaneRef?.current || !wallGroupRef?.current || wallId !== "front") return;
-      didDragRef.current = true;
       const rect = gl.domElement.getBoundingClientRect();
       ptr.current.set(
         (clientX - rect.left) / rect.width * 2 - 1,
@@ -78,6 +82,8 @@ export default function DraggableDoor({
     e.stopPropagation();
     e.target.setPointerCapture(e.pointerId);
     didDragRef.current = false;
+    startPosRef.current = { x: e.clientX, y: e.clientY };
+    setPointerDownOnInteractive(true);
     setSelectedElementId(`door-${wallId}`);
     setIsDraggingElement(true);
     const canvas = gl.domElement;
@@ -87,9 +93,19 @@ export default function DraggableDoor({
       canvas.onpointerleave = null;
       e.target.releasePointerCapture?.(e.pointerId);
       setIsDraggingElement(false);
-      if (didDragRef.current) setSelectedElementId(null);
     };
-    canvas.onpointermove = (ev) => updateX(ev.clientX, ev.clientY);
+    canvas.onpointermove = (ev) => {
+      const dx = ev.clientX - startPosRef.current.x;
+      const dy = ev.clientY - startPosRef.current.y;
+      const distSq = dx * dx + dy * dy;
+      const DRAG_THRESHOLD_PX = 9; // 3px radius
+      if (!didDragRef.current && distSq > DRAG_THRESHOLD_PX * DRAG_THRESHOLD_PX) {
+        didDragRef.current = true;
+      }
+      if (didDragRef.current) {
+        updateX(ev.clientX, ev.clientY);
+      }
+    };
     canvas.onpointerup = cleanup;
     canvas.onpointerleave = cleanup;
   };
@@ -100,7 +116,33 @@ export default function DraggableDoor({
         <boxGeometry args={[doorWidth + 6, wallHeight, 0.5]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
-      <DoorFrame doorType={doorType} wallHeight={wallHeight} doorWidth={doorWidth} doorHeight={doorHeight} trimMat={trimMat} exteriorZSign={exteriorZSign} isTrapezoidWall={isTrapezoidWall} doorBottomY={doorBottomY} />
+      {isSelected && (
+        <mesh
+          position={[
+            doorWidth / 2 + 8,
+            doorBottomY + doorHeight - 6,
+            deleteButtonZ,
+          ]}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            setDoorType("none");
+            setSelectedElementId(null);
+          }}
+        >
+          <boxGeometry args={[8, 8, 0.5]} />
+          <meshBasicMaterial color="#ff4b4b" depthTest={false} />
+        </mesh>
+      )}
+      <DoorFrame
+        doorType={doorType}
+        wallHeight={wallHeight}
+        doorWidth={doorWidth}
+        doorHeight={doorHeight}
+        trimMat={trimMat}
+        exteriorZSign={exteriorZSign}
+        isTrapezoidWall={isTrapezoidWall}
+        doorBottomY={doorBottomY}
+      />
     </group>
   );
 }

@@ -1,5 +1,5 @@
 import { Box } from "@react-three/drei";
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { useConfigurator } from "../../../context/ConfiguratorContext";
 import { useBuilder } from "../../../context/BuilderContext";
@@ -63,8 +63,9 @@ const Wall = ({
 }) => {
   const wallGroupRef = useRef();
   const dragPlaneRef = useRef();
-  const { shedConfig, setWindowPosition, windowTypes = {}, wallHeightType, roofStyle } = useConfigurator();
-  const { selectedElementId, showFraming, debugShowDragPlanes } = useBuilder();
+  const { shedConfig, setWindowPosition, windowTypes = {}, wallHeightType, roofStyle, addWindowAt, placeDoorAt, removeWindow, setDoorType } = useConfigurator();
+  const { selectedElementId, showFraming, debugShowDragPlanes, placementTool, setPlacementTool, placementDrag, setPlacementDrag } = useBuilder();
+  const [isPlacementHover, setIsPlacementHover] = useState(false);
   const { woodFraming } = useShedTexturesContext();
 
   const height = getWallHeight(profile);
@@ -192,7 +193,32 @@ const Wall = ({
         peakHeight={isGable ? peakHeight : undefined}
         yCenter={(isTrapezoidal || isGable) ? yCenter : undefined}
       />
-      <mesh ref={dragPlaneRef} position={[0, 0, 0.2 * exteriorZSign]}>
+      <mesh
+        ref={dragPlaneRef}
+        position={[0, 0, 0.2 * exteriorZSign]}
+        onPointerOver={(e) => {
+          if (placementTool?.kind === "window") {
+            e.stopPropagation();
+            setIsPlacementHover(true);
+          }
+        }}
+        onPointerOut={(e) => {
+          if (placementTool?.kind === "window") {
+            e.stopPropagation();
+            setIsPlacementHover(false);
+          }
+        }}
+        onPointerMove={(e) => {
+          if (!placementTool || !placementDrag) return;
+          if (!wallGroupRef.current) return;
+          const pt = e.point.clone();
+          wallGroupRef.current.worldToLocal(pt);
+          setPlacementDrag((prev) => {
+            if (!prev) return prev;
+            return { ...prev, lastHit: { wallId, x: pt.x } };
+          });
+        }}
+      >
         {wallGeometry ? (
           <primitive object={wallGeometry} attach="geometry" />
         ) : (
@@ -200,9 +226,17 @@ const Wall = ({
         )}
         <meshBasicMaterial
           side={THREE.DoubleSide}
-          color="#3388ff"
+          color={
+            (placementTool?.kind === "window" || placementTool?.kind === "door") && isPlacementHover
+              ? "#55cc88"
+              : "#3388ff"
+          }
           transparent
-          opacity={debugShowDragPlanes ? 0.25 : 0}
+          opacity={
+            placementTool?.kind === "window" || placementTool?.kind === "door"
+              ? (isPlacementHover ? 0.18 : 0.08)
+              : (debugShowDragPlanes ? 0.25 : 0)
+          }
           depthWrite={false}
         />
       </mesh>
@@ -307,6 +341,7 @@ const Wall = ({
           doorWidth={doorDims?.width ?? 0}
           showFraming={showFraming}
           onPositionChange={setWindowPosition}
+          onDelete={(wId, idx) => removeWindow(wId, idx)}
           dragPlaneRef={dragPlaneRef}
           wallGroupRef={wallGroupRef}
           trimMat={trimMat}

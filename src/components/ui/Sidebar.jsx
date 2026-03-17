@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useConfigurator } from "../../context/ConfiguratorContext";
 import { useBuilder, BUILDER_STEPS } from "../../context/BuilderContext";
 import { LayoutGrid, PanelRight, SquareStack, PanelLeft, Layers, Home, Menu, ChevronLeft, ChevronRight } from "lucide-react";
@@ -13,7 +13,8 @@ import InteriorTools from "./InteriorTools";
 const STEP_CONFIG = [
   { id: "BASE", label: "Base", Icon: LayoutGrid, short: "Base" },
   { id: "FRONT_WALL", label: "Front", Icon: PanelRight, short: "Front" },
-  { id: "SIDE_WALLS", label: "Sides", Icon: SquareStack, short: "Sides" },
+  { id: "LEFT_SIDE", label: "Left Side", Icon: SquareStack, short: "Left Side" },
+  { id: "RIGHT_SIDE", label: "Right Side", Icon: SquareStack, short: "Right Side" },
   { id: "BACK_WALL", label: "Back", Icon: PanelLeft, short: "Back" },
   { id: "ROOF", label: "Roof", Icon: Layers, short: "Roof" },
   { id: "INTERIOR", label: "Interior", Icon: Home, short: "Interior" },
@@ -28,7 +29,7 @@ const WINDOW_TYPE_OPTIONS = [
 ];
 
 function WindowPanel({ wallIds }) {
-  const { windowPositions, windowTypes, setWindowType, addWindow, removeWindow, canAddWindow, windowTypeFitsWall } = useConfigurator();
+  const { windowPositions, windowTypes, setWindowType, removeWindow, windowTypeFitsWall } = useConfigurator();
   return (
     <div className="space-y-2">
       {wallIds.map((wallId) => (
@@ -41,18 +42,16 @@ function WindowPanel({ wallIds }) {
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white text-gray-700 text-xs border border-gray-200"
               >
                 {x}"
-                <button type="button" onClick={() => removeWindow(wallId, i)} className="text-red-500 hover:text-red-700" aria-label="Remove">×</button>
+                <button
+                  type="button"
+                  onClick={() => removeWindow(wallId, i)}
+                  className="text-red-500 hover:text-red-700"
+                  aria-label="Remove"
+                >
+                  ×
+                </button>
               </span>
             ))}
-            <button
-              type="button"
-              onClick={() => addWindow(wallId)}
-              disabled={!canAddWindow(wallId)}
-              className="btn-option btn-option-inactive px-2 py-1 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-              title={!canAddWindow(wallId) ? "No room for another window on this wall" : undefined}
-            >
-              + Add
-            </button>
           </div>
           {(windowPositions[wallId] || []).length > 0 && (
             <div className="pl-14 space-y-1.5">
@@ -94,9 +93,68 @@ function WindowPanel({ wallIds }) {
 }
 
 export default function Sidebar({ onImageUpload, onGetQuote }) {
-  const { builderStep, setBuilderStep, goNext, goPrev, canGoNext, canGoPrev } = useBuilder();
+  const {
+    includeFrontWall,
+    setIncludeFrontWall,
+    includeLeftWall,
+    setIncludeLeftWall,
+    includeRightWall,
+    setIncludeRightWall,
+    includeBackWall,
+    setIncludeBackWall,
+    includeRoof,
+    setIncludeRoof,
+    addWindowAt,
+    placeDoorAt,
+  } = useConfigurator();
+  const { builderStep, setBuilderStep, goNext, goPrev, canGoNext, canGoPrev, placementTool, setPlacementTool, placementDrag, setPlacementDrag } = useBuilder();
   const [collapsed, setCollapsed] = useState(false);
   const currentIndex = BUILDER_STEPS.indexOf(builderStep);
+
+  const latestPlacementDragRef = useRef(null);
+  useEffect(() => {
+    latestPlacementDragRef.current = placementDrag;
+  }, [placementDrag]);
+
+  const startPlacementDrag = (item) => (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const pointerX = e.clientX;
+    const pointerY = e.clientY;
+    const initial = { item, pointerX, pointerY, lastHit: null };
+    setPlacementTool(item);
+    setPlacementDrag(initial);
+    latestPlacementDragRef.current = initial;
+
+    const handleMove = (ev) => {
+      setPlacementDrag((prev) => {
+        if (!prev) return prev;
+        const next = { ...prev, pointerX: ev.clientX, pointerY: ev.clientY };
+        latestPlacementDragRef.current = next;
+        return next;
+      });
+    };
+
+    const handleUp = () => {
+      const latest = latestPlacementDragRef.current;
+      if (latest?.lastHit) {
+        const { wallId, x } = latest.lastHit;
+        if (latest.item.kind === "window") {
+          addWindowAt(wallId, x, latest.item.windowType || "STANDARD");
+        } else if (latest.item.kind === "door") {
+          placeDoorAt(wallId, x, latest.item.doorType || "single");
+        }
+      }
+      setPlacementDrag(null);
+      setPlacementTool(null);
+      latestPlacementDragRef.current = null;
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+    };
+
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+  };
 
   return (
     <>
@@ -164,6 +222,10 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
             {builderStep === "BASE" && (
               <div className="space-y-6">
                 <section className="option-group">
+                  <h3 className="section-heading">Wall Height</h3>
+                  <WallHeightSelector />
+                </section>
+                <section className="option-group">
                   <h3 className="section-heading">Dimensions</h3>
                   <p className="text-xs text-gray-500 mb-3">Choose width and depth for your shed base.</p>
                   <SizePresets />
@@ -177,13 +239,93 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
             {builderStep === "FRONT_WALL" && (
               <div className="space-y-6">
                 <section className="option-group">
+                  <h3 className="section-heading">Front Wall</h3>
+                  <label className="flex items-center gap-2 text-xs text-gray-600">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300"
+                      checked={includeFrontWall}
+                      onChange={(e) => setIncludeFrontWall(e.target.checked)}
+                    />
+                    Include front wall
+                  </label>
+                </section>
+                <section className="option-group">
                   <h3 className="section-heading">Door</h3>
-                  <p className="text-xs text-gray-500 mb-3">Select door type for the front wall.</p>
+                  <p className="text-xs text-gray-500 mb-3">Select default door type (front wall).</p>
                   <DoorSelector />
                 </section>
                 <section className="option-group">
+                  <h3 className="section-heading">Place Door</h3>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Choose a door type, then click any wall in the 3D view to place it.
+                  </p>
+                  <div className="flex flex-wrap gap-2 mb-1">
+                    {[
+                      { label: "Single Door", type: "single" },
+                      { label: "Stable Door", type: "stable" },
+                      { label: "Double Door", type: "double" },
+                      { label: "Double with Windows", type: "double_with_windows" },
+                    ].map(({ label, type }) => {
+                      const isActive =
+                        placementDrag?.item?.kind === "door" && placementDrag.item.doorType === type;
+                      return (
+                        <button
+                          key={type}
+                          type="button"
+                          className={`px-2 py-1 text-xs rounded ${
+                            isActive
+                              ? "bg-[#2A7F7F] text-white"
+                              : "btn-option btn-option-inactive"
+                          }`}
+                          onPointerDown={startPlacementDrag({ kind: "door", doorType: type })}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {placementDrag?.item?.kind === "door" && (
+                    <p className="mt-1 text-[11px] text-gray-500">
+                      Door placement active. Drag onto a wall in the 3D view to place the door.
+                    </p>
+                  )}
+                </section>
+                <section className="option-group">
                   <h3 className="section-heading">Front Wall Windows</h3>
-                  <p className="text-xs text-gray-500 mb-3">Add windows and drag to position on the wall.</p>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Drag window types from the palette onto any wall in the 3D view.
+                  </p>
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {[
+                      { label: "Standard Window", type: "STANDARD" },
+                      { label: "Double Window", type: "DOUBLE" },
+                    ].map(({ label, type }) => {
+                      const isActive =
+                        placementDrag?.item?.kind === "window" &&
+                        placementDrag.item.windowType === type;
+                      return (
+                        <button
+                          key={type}
+                          type="button"
+                          className={`px-2 py-1 text-xs rounded ${
+                            isActive ? "bg-[#2A7F7F] text-white" : "btn-option btn-option-inactive"
+                          }`}
+                          onPointerDown={startPlacementDrag({
+                            kind: "window",
+                            windowType: type,
+                          })}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {placementDrag?.item?.kind === "window" && (
+                    <p className="mt-1 text-[11px] text-gray-500">
+                      Drag the ghost window onto a wall in the 3D view to place it.
+                    </p>
+                  )}
                   <WindowPanel wallIds={["front"]} />
                 </section>
                 <div className="flex gap-2">
@@ -191,22 +333,124 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
                     <ChevronLeft className="w-4 h-4 inline mr-0.5" /> Back
                   </button>
                   <button type="button" onClick={goNext} className="btn-primary flex-1">
-                    Continue to Side Walls
+                    Continue to Left Side
                   </button>
                 </div>
               </div>
             )}
 
-            {builderStep === "SIDE_WALLS" && (
+            {builderStep === "LEFT_SIDE" && (
               <div className="space-y-6">
                 <section className="option-group">
-                  <h3 className="section-heading">Wall Height</h3>
-                  <WallHeightSelector />
+                  <h3 className="section-heading">Left Side Wall</h3>
+                  <label className="flex items-center gap-2 text-xs text-gray-600">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300"
+                      checked={includeLeftWall}
+                      onChange={(e) => setIncludeLeftWall(e.target.checked)}
+                    />
+                    Include left wall
+                  </label>
                 </section>
                 <section className="option-group">
-                  <h3 className="section-heading">Side Wall Windows</h3>
-                  <p className="text-xs text-gray-500 mb-3">Add windows to left and right walls. Drag to position.</p>
-                  <WindowPanel wallIds={["left", "right"]} />
+                  <h3 className="section-heading">Left Side Windows</h3>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Drag window types from the palette onto any wall in the 3D view.
+                  </p>
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {[
+                      { label: "Standard Window", type: "STANDARD" },
+                      { label: "Double Window", type: "DOUBLE" },
+                    ].map(({ label, type }) => {
+                      const isActive =
+                        placementDrag?.item?.kind === "window" &&
+                        placementDrag.item.windowType === type;
+                      return (
+                        <button
+                          key={type}
+                          type="button"
+                          className={`px-2 py-1 text-xs rounded ${
+                            isActive ? "bg-[#2A7F7F] text-white" : "btn-option btn-option-inactive"
+                          }`}
+                          onPointerDown={startPlacementDrag({
+                            kind: "window",
+                            windowType: type,
+                          })}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {placementDrag?.item?.kind === "window" && (
+                    <p className="mt-1 text-[11px] text-gray-500">
+                      Drag the ghost window onto a wall in the 3D view to place it.
+                    </p>
+                  )}
+                  <WindowPanel wallIds={["left"]} />
+                </section>
+                <div className="flex gap-2">
+                  <button type="button" onClick={goPrev} className="btn-secondary flex-1" disabled={!canGoPrev}>
+                    <ChevronLeft className="w-4 h-4 inline mr-0.5" /> Back
+                  </button>
+                  <button type="button" onClick={goNext} className="btn-primary flex-1">
+                    Continue to Right Side
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {builderStep === "RIGHT_SIDE" && (
+              <div className="space-y-6">
+                <section className="option-group">
+                  <h3 className="section-heading">Right Side Wall</h3>
+                  <label className="flex items-center gap-2 text-xs text-gray-600">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300"
+                      checked={includeRightWall}
+                      onChange={(e) => setIncludeRightWall(e.target.checked)}
+                    />
+                    Include right wall
+                  </label>
+                </section>
+                <section className="option-group">
+                  <h3 className="section-heading">Right Side Windows</h3>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Drag window types from the palette onto any wall in the 3D view.
+                  </p>
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {[
+                      { label: "Standard Window", type: "STANDARD" },
+                      { label: "Double Window", type: "DOUBLE" },
+                    ].map(({ label, type }) => {
+                      const isActive =
+                        placementDrag?.item?.kind === "window" &&
+                        placementDrag.item.windowType === type;
+                      return (
+                        <button
+                          key={type}
+                          type="button"
+                          className={`px-2 py-1 text-xs rounded ${
+                            isActive ? "bg-[#2A7F7F] text-white" : "btn-option btn-option-inactive"
+                          }`}
+                          onPointerDown={startPlacementDrag({
+                            kind: "window",
+                            windowType: type,
+                          })}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {placementDrag?.item?.kind === "window" && (
+                    <p className="mt-1 text-[11px] text-gray-500">
+                      Drag the ghost window onto a wall in the 3D view to place it.
+                    </p>
+                  )}
+                  <WindowPanel wallIds={["right"]} />
                 </section>
                 <div className="flex gap-2">
                   <button type="button" onClick={goPrev} className="btn-secondary flex-1" disabled={!canGoPrev}>
@@ -222,8 +466,52 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
             {builderStep === "BACK_WALL" && (
               <div className="space-y-6">
                 <section className="option-group">
+                  <h3 className="section-heading">Back Wall</h3>
+                  <label className="flex items-center gap-2 text-xs text-gray-600">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300"
+                      checked={includeBackWall}
+                      onChange={(e) => setIncludeBackWall(e.target.checked)}
+                    />
+                    Include back wall
+                  </label>
+                </section>
+                <section className="option-group">
                   <h3 className="section-heading">Back Wall Windows</h3>
-                  <p className="text-xs text-gray-500 mb-3">Add optional windows. Drag to position.</p>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Drag window types from the palette onto any wall in the 3D view.
+                  </p>
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {[
+                      { label: "Standard Window", type: "STANDARD" },
+                      { label: "Double Window", type: "DOUBLE" },
+                    ].map(({ label, type }) => {
+                      const isActive =
+                        placementDrag?.item?.kind === "window" &&
+                        placementDrag.item.windowType === type;
+                      return (
+                        <button
+                          key={type}
+                          type="button"
+                          className={`px-2 py-1 text-xs rounded ${
+                            isActive ? "bg-[#2A7F7F] text-white" : "btn-option btn-option-inactive"
+                          }`}
+                          onPointerDown={startPlacementDrag({
+                            kind: "window",
+                            windowType: type,
+                          })}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {placementDrag?.item?.kind === "window" && (
+                    <p className="mt-1 text-[11px] text-gray-500">
+                      Drag the ghost window onto a wall in the 3D view to place it.
+                    </p>
+                  )}
                   <WindowPanel wallIds={["back"]} />
                 </section>
                 <div className="flex gap-2">
@@ -243,6 +531,18 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
                   <h3 className="section-heading">Roof Style</h3>
                   <p className="text-xs text-gray-500 mb-3">Select apex or pent roof.</p>
                   <RoofSelector />
+                </section>
+                <section className="option-group">
+                  <h3 className="section-heading">Roof</h3>
+                  <label className="flex items-center gap-2 text-xs text-gray-600">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300"
+                      checked={includeRoof}
+                      onChange={(e) => setIncludeRoof(e.target.checked)}
+                    />
+                    Include roof
+                  </label>
                 </section>
                 <div className="flex gap-2">
                   <button type="button" onClick={goPrev} className="btn-secondary flex-1" disabled={!canGoPrev}>
@@ -278,6 +578,27 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
           </div>
         </div>
       </aside>
+      {placementDrag && (
+        <div
+          className="pointer-events-none fixed z-50 px-2 py-1 rounded bg-[#2A7F7F] text-white text-[11px] shadow"
+          style={{
+            left: placementDrag.pointerX + 12,
+            top: placementDrag.pointerY + 12,
+          }}
+        >
+          {placementDrag.item.kind === "window"
+            ? placementDrag.item.windowType === "DOUBLE"
+              ? "Double Window"
+              : "Standard Window"
+            : (() => {
+                const t = placementDrag.item.doorType;
+                if (t === "stable") return "Stable Door";
+                if (t === "double") return "Double Door";
+                if (t === "double_with_windows") return "Double w/ Windows";
+                return "Single Door";
+              })()}
+        </div>
+      )}
     </>
   );
 }

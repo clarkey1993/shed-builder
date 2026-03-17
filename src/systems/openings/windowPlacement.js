@@ -1,3 +1,5 @@
+import { GRID_SNAP, STUD_SNAP, STUD_ASSIST_DIST } from "../snapping/snapRules";
+
 /**
  * Window placement validity - shared rules for add and drag.
  * Uses same edge clearance and window-to-window gap as Window.jsx clampAndSnap.
@@ -131,4 +133,87 @@ export function getDefaultWindowPosition(wallWidth, windowWidth, otherWindows = 
   const [a, b] = preferred[0];
   const center = (a + b) / 2;
   return Number.isFinite(center) ? center : 0;
+}
+
+/**
+ * Shared clamp + snap used for both drag and placement.
+ * Keeps edge clearance, window-to-window gap, stud snap, and grid snap consistent.
+ */
+export function clampAndSnap(
+  x,
+  wallWidth,
+  doorCenterX,
+  doorWidth,
+  windowWidth,
+  otherWindows = []
+) {
+  if (typeof wallWidth !== "number" || !Number.isFinite(wallWidth) || wallWidth <= 0) {
+    return { x: 0, snappedToStud: false };
+  }
+  const halfWindow = (typeof windowWidth === "number" && Number.isFinite(windowWidth) ? windowWidth : 24) / 2;
+  let min = -wallWidth / 2 + halfWindow + EDGE_CLEARANCE;
+  let max = wallWidth / 2 - halfWindow - EDGE_CLEARANCE;
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min > max) {
+    return { x: 0, snappedToStud: false };
+  }
+
+  for (const other of otherWindows) {
+    const ow = typeof other.width === "number" && Number.isFinite(other.width) ? other.width : 24;
+    const ox = typeof other.x === "number" && Number.isFinite(other.x) ? other.x : 0;
+    const gap = minGapBetween(windowWidth, ow);
+    if (x > ox - gap / 2 && x < ox + gap / 2) {
+      x = x < ox ? ox - gap / 2 : ox + gap / 2;
+    }
+  }
+
+  x = Math.max(min, Math.min(max, Number.isFinite(x) ? x : 0));
+
+  const validBays = getValidBayCenters(wallWidth, min, max, doorCenterX, doorWidth, windowWidth, otherWindows);
+  if (validBays.length > 0) {
+    let nearest = validBays[0];
+    let bestDist = Math.abs(x - nearest);
+    for (let i = 1; i < validBays.length; i++) {
+      const d = Math.abs(x - validBays[i]);
+      if (Number.isFinite(d) && d < bestDist) {
+        bestDist = d;
+        nearest = validBays[i];
+      }
+    }
+    if (Number.isFinite(nearest) && bestDist <= STUD_ASSIST_DIST) {
+      const snapped = Math.max(min, Math.min(max, nearest));
+      const out = Number.isFinite(snapped) ? snapped : Math.max(min, Math.min(max, 0));
+      return { x: out, snappedToStud: true };
+    }
+  }
+
+  const gridSnap = Math.round(x / GRID_SNAP) * GRID_SNAP;
+  const snapped = Math.max(min, Math.min(max, Number.isFinite(gridSnap) ? gridSnap : 0));
+  const out = Number.isFinite(snapped) ? snapped : Math.max(min, Math.min(max, 0));
+  return { x: out, snappedToStud: false };
+}
+
+function getValidBayCenters(wallWidth, min, max, doorCenterX, doorWidth, windowWidth, otherWindows = []) {
+  if (typeof wallWidth !== "number" || !Number.isFinite(wallWidth) || wallWidth <= 0) return [];
+  const halfW = wallWidth / 2;
+  const numStuds = Math.floor(wallWidth / STUD_SNAP) + 1;
+  if (numStuds <= 1) return [];
+  const actualSpacing = wallWidth / (numStuds - 1);
+  if (!Number.isFinite(actualSpacing)) return [];
+  const centers = [];
+  for (let i = 0; i < numStuds - 1; i++) {
+    const c = -halfW + (i + 0.5) * actualSpacing;
+    if (!Number.isFinite(c) || c < min || c > max) continue;
+    let blocked = false;
+    for (const other of otherWindows) {
+      const ow = typeof other.width === "number" && Number.isFinite(other.width) ? other.width : 24;
+      const ox = typeof other.x === "number" && Number.isFinite(other.x) ? other.x : 0;
+      const gap = minGapBetween(windowWidth, ow);
+      if (c >= ox - gap / 2 && c <= ox + gap / 2) {
+        blocked = true;
+        break;
+      }
+    }
+    if (!blocked) centers.push(c);
+  }
+  return centers.filter((c) => Number.isFinite(c));
 }

@@ -11,6 +11,7 @@ import { useConfigurator } from "../../context/ConfiguratorContext";
 
 const DURATION = 0.4;
 const TOLERANCE = 0.01;
+const AUTO_MOVE_CAMERA_ON_STEP = false;
 
 function easeInOutCubic(t) {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
@@ -39,13 +40,15 @@ export default function CameraController() {
   const stepCameras = useMemo(() => ({
     BASE: { position: [radius * 1.2, wallHeight * 1.2, radius * 1.2], target: [0, 0, 0] },
     FRONT_WALL: { position: [0, wallHeight * 0.9, -frontDistance], target: [0, wallHeight * 0.5, 0] },
-    SIDE_WALLS: { position: [sideDistance, wallHeight * 0.9, 0], target: [0, wallHeight * 0.5, 0] },
+    LEFT_SIDE: { position: [sideDistance, wallHeight * 0.9, 0], target: [0, wallHeight * 0.5, 0] },
+    RIGHT_SIDE: { position: [sideDistance, wallHeight * 0.9, 0], target: [0, wallHeight * 0.5, 0] },
     BACK_WALL: { position: [0, wallHeight * 0.9, frontDistance], target: [0, wallHeight * 0.5, 0] },
     ROOF: { position: [width * 0.8, wallHeight * 1.8, depth * 0.8], target: [0, wallHeight * 0.5, 0] },
     INTERIOR: { position: [width * 0.4, wallHeight * 0.8, depth * 0.4], target: [0, wallHeight * 0.5, 0] },
-  }), [width, depth, wallHeight, radius]);
+  }), [width, depth, wallHeight, radius, frontDistance, sideDistance]);
 
   useEffect(() => {
+    if (!AUTO_MOVE_CAMERA_ON_STEP) return;
     const cfg = stepCameras[builderStep] || stepCameras.BASE;
     desiredPosition.current.set(...cfg.position);
     desiredTarget.current.set(...cfg.target);
@@ -56,7 +59,7 @@ export default function CameraController() {
   }, [builderStep, stepCameras, camera]);
 
   useFrame((_, delta) => {
-    if (!isAnimating.current) return;
+    if (!AUTO_MOVE_CAMERA_ON_STEP || !isAnimating.current) return;
     animProgress.current = Math.min(1, animProgress.current + delta / DURATION);
     const t = easeInOutCubic(animProgress.current);
 

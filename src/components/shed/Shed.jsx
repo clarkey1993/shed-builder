@@ -12,7 +12,20 @@ const CORNER_TRIM_WIDTH = 3;
 const CORNER_TRIM_THICKNESS = 1.5;
 
 const Shed = () => {
-  const { shedConfig, roofStyle, pentSlopeDirection, windowPositions, doorType, frontDoorCenterX } = useConfigurator();
+  const {
+    shedConfig,
+    roofStyle,
+    pentSlopeDirection,
+    windowPositions,
+    doorType,
+    doorWallId,
+    frontDoorCenterX,
+    includeFrontWall,
+    includeLeftWall,
+    includeRightWall,
+    includeBackWall,
+    includeRoof,
+  } = useConfigurator();
   const { viewMode, partitions } = useInteriorView();
   const { builderStep, showFraming, debugShowFullShed } = useBuilder();
   const { woodFraming, osb } = useShedTexturesContext();
@@ -32,14 +45,14 @@ const Shed = () => {
   const { cornerHeights } = wallProfiles;
   const wallHeightForPartitions = roofStyle === "apex" ? apexWallHeight : (cornerHeights.frontLeft + cornerHeights.backLeft) / 2;
 
-  // Full shed visible as soon as user leaves BASE (steps only control editing focus, not what exists)
   const showBase = true;
-  const pastBase = builderStep !== "BASE";
-  const showFrontWall = debugShowFullShed || pastBase;
-  const showSideWalls = debugShowFullShed || pastBase;
-  const showBackWall = debugShowFullShed || pastBase;
-  const showCornerPosts = debugShowFullShed || pastBase;
-  const showRoof = (debugShowFullShed || pastBase) && builderStep !== "INTERIOR";
+  const showFrontWall = debugShowFullShed || includeFrontWall;
+  const showLeftWall = debugShowFullShed || includeLeftWall;
+  const showRightWall = debugShowFullShed || includeRightWall;
+  const showBackWall = debugShowFullShed || includeBackWall;
+  const showCornerPosts = debugShowFullShed || builderStep !== "BASE";
+  const showRoof =
+    (debugShowFullShed || includeRoof) && builderStep !== "INTERIOR";
   const showPartitions = builderStep === "INTERIOR" && isInterior;
   const baseCladdingOpacity = (isInterior || builderStep === "INTERIOR") && !debugShowFullShed ? 0.15 : 1;
   const claddingOpacity = showFraming && baseCladdingOpacity === 1 ? 0.82 : baseCladdingOpacity;
@@ -114,11 +127,11 @@ const Shed = () => {
           position={[0, getWallCenterY(wallProfiles.front), -floorDepth / 2]}
           rotation={[0, 0, 0]}
           exteriorZSign={-1}
-          hasDoor
+          hasDoor={doorWallId === "front" && doorType !== "none"}
           doorType={doorType}
           windowPositions={windowPositions.front}
           claddingOpacity={claddingOpacity}
-          doorCenterX={frontDoorCenterX}
+          doorCenterX={doorWallId === "front" ? frontDoorCenterX : 0}
         />
       )}
       {showBackWall && (
@@ -129,33 +142,42 @@ const Shed = () => {
           position={[0, getWallCenterY(wallProfiles.back), floorDepth / 2]}
           rotation={[0, Math.PI, 0]}
           exteriorZSign={-1}
+          hasDoor={doorWallId === "back" && doorType !== "none"}
+          doorType={doorType}
           windowPositions={windowPositions.back}
           claddingOpacity={claddingOpacity}
+          doorCenterX={doorWallId === "back" ? frontDoorCenterX : 0}
         />
       )}
-      {showSideWalls && (
-        <>
-          <Wall
-            wallId="left"
-            width={floorDepth}
-            profile={wallProfiles.left}
-            position={[-floorWidth / 2, getWallCenterY(wallProfiles.left), 0]}
-            rotation={[0, Math.PI / 2, 0]}
-            exteriorZSign={-1}
-            windowPositions={windowPositions.left}
-            claddingOpacity={claddingOpacity}
-          />
-          <Wall
-            wallId="right"
-            width={floorDepth}
-            profile={wallProfiles.right}
-            position={[floorWidth / 2, getWallCenterY(wallProfiles.right), 0]}
-            rotation={[0, -Math.PI / 2, 0]}
-            exteriorZSign={-1}
-            windowPositions={windowPositions.right}
-            claddingOpacity={claddingOpacity}
-          />
-        </>
+      {showLeftWall && (
+        <Wall
+          wallId="left"
+          width={floorDepth}
+          profile={wallProfiles.left}
+          position={[-floorWidth / 2, getWallCenterY(wallProfiles.left), 0]}
+          rotation={[0, Math.PI / 2, 0]}
+          exteriorZSign={-1}
+          hasDoor={doorWallId === "left" && doorType !== "none"}
+          doorType={doorType}
+          windowPositions={windowPositions.left}
+          claddingOpacity={claddingOpacity}
+          doorCenterX={doorWallId === "left" ? frontDoorCenterX : 0}
+        />
+      )}
+      {showRightWall && (
+        <Wall
+          wallId="right"
+          width={floorDepth}
+          profile={wallProfiles.right}
+          position={[floorWidth / 2, getWallCenterY(wallProfiles.right), 0]}
+          rotation={[0, -Math.PI / 2, 0]}
+          exteriorZSign={-1}
+          hasDoor={doorWallId === "right" && doorType !== "none"}
+          doorType={doorType}
+          windowPositions={windowPositions.right}
+          claddingOpacity={claddingOpacity}
+          doorCenterX={doorWallId === "right" ? frontDoorCenterX : 0}
+        />
       )}
 
       {/* Internal Partitions (Interior step only) */}

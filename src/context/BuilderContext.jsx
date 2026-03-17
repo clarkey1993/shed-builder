@@ -7,7 +7,8 @@ import { createContext, useContext, useState, useCallback } from "react";
 export const BUILDER_STEPS = [
   "BASE",
   "FRONT_WALL",
-  "SIDE_WALLS",
+  "LEFT_SIDE",
+  "RIGHT_SIDE",
   "BACK_WALL",
   "ROOF",
   "INTERIOR",
@@ -26,6 +27,9 @@ export function BuilderProvider({ children }) {
   const [showFraming, setShowFraming] = useState(false);
   const [debugShowFullShed, setDebugShowFullShed] = useState(false);
   const [debugShowDragPlanes, setDebugShowDragPlanes] = useState(false);
+  const [placementTool, setPlacementTool] = useState(null);
+  const [pointerDownOnInteractive, setPointerDownOnInteractive] = useState(false);
+  const [placementDrag, setPlacementDrag] = useState(null);
 
   const goToStep = (step) => {
     if (BUILDER_STEPS.includes(step)) setBuilderStep(step);
@@ -69,6 +73,12 @@ export function BuilderProvider({ children }) {
         setDebugShowFullShed,
         debugShowDragPlanes,
         setDebugShowDragPlanes,
+        placementTool,
+        setPlacementTool,
+        pointerDownOnInteractive,
+        setPointerDownOnInteractive,
+        placementDrag,
+        setPlacementDrag,
       }}
     >
       {children}

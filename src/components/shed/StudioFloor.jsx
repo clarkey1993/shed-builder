@@ -10,14 +10,19 @@ const FLOOR_SIZE = 500;
 const FLOOR_COLOR = "#E8E4E0"; // Warm light grey, non-distracting
 
 export default function StudioFloor({ hideForBackground = false }) {
-  const { setSelectedElementId } = useBuilder();
+  const { setSelectedElementId, pointerDownOnInteractive, setPointerDownOnInteractive } = useBuilder();
   return (
     <Plane
       args={[FLOOR_SIZE, FLOOR_SIZE]}
       rotation={[-Math.PI / 2, 0, 0]}
       position={[0, -0.02, 0]}
       receiveShadow
-      onClick={() => setSelectedElementId(null)}
+      onClick={() => {
+        if (!pointerDownOnInteractive) {
+          setSelectedElementId(null);
+        }
+        setPointerDownOnInteractive(false);
+      }}
     >
       <meshStandardMaterial
         color={FLOOR_COLOR}

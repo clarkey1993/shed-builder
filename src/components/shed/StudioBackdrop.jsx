@@ -12,14 +12,19 @@ const BACKDROP_SCALE = 80;
 const BACKDROP_POSITION = [-28, 12, -28];
 
 export default function StudioBackdrop({ hideForBackground = false }) {
-  const { setSelectedElementId } = useBuilder();
+  const { setSelectedElementId, pointerDownOnInteractive, setPointerDownOnInteractive } = useBuilder();
   if (hideForBackground) return null;
 
   return (
     <group position={BACKDROP_POSITION} rotation={[0, Math.PI / 4, 0]}>
       <Backdrop
         receiveShadow={false}
-        onClick={() => setSelectedElementId(null)}
+        onClick={() => {
+          if (!pointerDownOnInteractive) {
+            setSelectedElementId(null);
+          }
+          setPointerDownOnInteractive(false);
+        }}
         scale={BACKDROP_SCALE}
         floor={0.15}
         segments={32}
