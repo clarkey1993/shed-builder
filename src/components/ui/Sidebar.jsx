@@ -22,6 +22,47 @@ const STEP_CONFIG = [
 
 const WALL_LABELS = { front: "Front", back: "Back", left: "Left", right: "Right" };
 
+const DOOR_TYPE_OPTIONS = [
+  { label: "Single Door", type: "single" },
+  { label: "Stable Door", type: "stable" },
+  { label: "Double Door", type: "double" },
+  { label: "Double with Windows", type: "double_with_windows" },
+];
+
+function DoorPlacementSection({ heading, placementDrag, startPlacementDrag }) {
+  return (
+    <section className="option-group">
+      <h3 className="section-heading">{heading}</h3>
+      <p className="text-xs text-gray-500 mb-3">
+        Choose a door type, then drag onto any wall in the 3D view to place it.
+      </p>
+      <div className="flex flex-wrap gap-2 mb-1">
+        {DOOR_TYPE_OPTIONS.map(({ label, type }) => {
+          const isActive =
+            placementDrag?.item?.kind === "door" && placementDrag.item.doorType === type;
+          return (
+            <button
+              key={type}
+              type="button"
+              className={`px-2 py-1 text-xs rounded ${
+                isActive ? "bg-[#2A7F7F] text-white" : "btn-option btn-option-inactive"
+              }`}
+              onPointerDown={startPlacementDrag({ kind: "door", doorType: type })}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+      {placementDrag?.item?.kind === "door" && (
+        <p className="mt-1 text-[11px] text-gray-500">
+          Door placement active. Drag onto a wall in the 3D view to place the door.
+        </p>
+      )}
+    </section>
+  );
+}
+
 const WINDOW_TYPE_OPTIONS = [
   { label: "Standard", type: "STANDARD" },
   { label: "Security", type: "SECURITY" },
@@ -94,18 +135,19 @@ function WindowPanel({ wallIds }) {
 
 export default function Sidebar({ onImageUpload, onGetQuote }) {
   const {
-    includeFrontWall,
-    setIncludeFrontWall,
-    includeLeftWall,
-    setIncludeLeftWall,
-    includeRightWall,
-    setIncludeRightWall,
-    includeBackWall,
-    setIncludeBackWall,
-    includeRoof,
-    setIncludeRoof,
+    wallIncluded,
+    setWallIncludedFor,
+    wallJoinOverrideByWallId,
+    setWallJoinOverride,
+    activeModuleId,
+    setActiveModuleId,
+    roofByModule,
+    setRoofVisibleFor,
     addWindowAt,
     placeDoorAt,
+    addModule,
+    removeModule,
+    modules,
   } = useConfigurator();
   const { builderStep, setBuilderStep, goNext, goPrev, canGoNext, canGoPrev, placementTool, setPlacementTool, placementDrag, setPlacementDrag } = useBuilder();
   const [collapsed, setCollapsed] = useState(false);
@@ -143,6 +185,11 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
           addWindowAt(wallId, x, latest.item.windowType || "STANDARD");
         } else if (latest.item.kind === "door") {
           placeDoorAt(wallId, x, latest.item.doorType || "single");
+        } else if (latest.item.kind === "module") {
+          const [targetModuleId, attachSide] = (wallId || "").split("_");
+          if (targetModuleId && attachSide) {
+            addModule(targetModuleId, attachSide);
+          }
         }
       }
       setPlacementDrag(null);
@@ -225,11 +272,103 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
                   <h3 className="section-heading">Wall Height</h3>
                   <WallHeightSelector />
                 </section>
+                {modules.length > 1 && (
+                  <section className="option-group">
+                    <h3 className="section-heading">Edit Module</h3>
+                    <div className="flex flex-wrap gap-1.5">
+                      {modules.map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setActiveModuleId(m.id)}
+                          className={`px-2 py-1 text-xs rounded ${
+                            activeModuleId === m.id ? "bg-[#2A7F7F] text-white" : "btn-option btn-option-inactive"
+                          }`}
+                        >
+                          Module {m.id}
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                )}
+                {modules.length > 1 && (
+                  <section className="option-group">
+                    <h3 className="section-heading">Wall Override (Module {activeModuleId})</h3>
+                    <p className="text-xs text-gray-500 mb-2">Override auto-suppression for joined walls.</p>
+                    <div className="space-y-2">
+                      {[
+                        { side: "front", label: "Front" },
+                        { side: "left", label: "Left" },
+                        { side: "right", label: "Right" },
+                        { side: "back", label: "Back" },
+                      ].map(({ side, label }) => {
+                        const wallId = `${activeModuleId}_${side}`;
+                        const override = wallJoinOverrideByWallId[wallId] ?? "auto";
+                        return (
+                          <div key={wallId} className="flex items-center gap-2">
+                            <span className="text-xs text-gray-600 w-12">{label}:</span>
+                            <span className="flex gap-1">
+                              {[
+                                { mode: "auto", label: "Auto" },
+                                { mode: "force_on", label: "Keep Wall" },
+                                { mode: "force_off", label: "Remove Wall" },
+                              ].map(({ mode, label: btnLabel }) => (
+                                <button
+                                  key={mode}
+                                  type="button"
+                                  onClick={() => setWallJoinOverride(wallId, mode)}
+                                  className={`px-2 py-1 rounded text-xs ${
+                                    override === mode ? "bg-[#2A7F7F] text-white" : "btn-option btn-option-inactive"
+                                  }`}
+                                >
+                                  {btnLabel}
+                                </button>
+                              ))}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+                )}
                 <section className="option-group">
                   <h3 className="section-heading">Dimensions</h3>
-                  <p className="text-xs text-gray-500 mb-3">Choose width and depth for your shed base.</p>
+                  <p className="text-xs text-gray-500 mb-3">
+                    {modules.length > 1 ? `Width and depth for Module ${activeModuleId}.` : "Choose width and depth for your shed base."}
+                  </p>
                   <SizePresets />
                 </section>
+                <section className="option-group">
+                  <h3 className="section-heading">Add Module</h3>
+                  <p className="text-xs text-gray-500 mb-2">Drag onto any wall in the 3D view to attach a new module.</p>
+                  <button
+                    type="button"
+                    className={`px-2 py-1 text-xs rounded ${
+                      placementDrag?.item?.kind === "module" ? "bg-[#2A7F7F] text-white" : "btn-option btn-option-inactive"
+                    }`}
+                    onPointerDown={startPlacementDrag({ kind: "module" })}
+                  >
+                    Module
+                  </button>
+                  {placementDrag?.item?.kind === "module" && (
+                    <p className="mt-1 text-[11px] text-gray-500">
+                      Drag onto a wall in the 3D view to place the module.
+                    </p>
+                  )}
+                </section>
+                {modules.length > 1 && activeModuleId !== "A" && (
+                  <section className="option-group">
+                    <h3 className="section-heading">Remove Module</h3>
+                    <p className="text-xs text-gray-500 mb-2">Remove the currently selected module.</p>
+                    <button
+                      type="button"
+                      onClick={() => removeModule(activeModuleId)}
+                      className="btn-option btn-option-inactive px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                    >
+                      Remove Module {activeModuleId}
+                    </button>
+                  </section>
+                )}
                 <button type="button" onClick={goNext} className="btn-primary">
                   Continue to Front Wall
                 </button>
@@ -238,14 +377,33 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
 
             {builderStep === "FRONT_WALL" && (
               <div className="space-y-6">
+                {modules.length > 1 && (
+                  <section className="option-group">
+                    <h3 className="section-heading">Edit Module</h3>
+                    <div className="flex flex-wrap gap-1.5">
+                      {modules.map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setActiveModuleId(m.id)}
+                          className={`px-2 py-1 text-xs rounded ${
+                            activeModuleId === m.id ? "bg-[#2A7F7F] text-white" : "btn-option btn-option-inactive"
+                          }`}
+                        >
+                          Module {m.id}
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                )}
                 <section className="option-group">
                   <h3 className="section-heading">Front Wall</h3>
                   <label className="flex items-center gap-2 text-xs text-gray-600">
                     <input
                       type="checkbox"
                       className="rounded border-gray-300"
-                      checked={includeFrontWall}
-                      onChange={(e) => setIncludeFrontWall(e.target.checked)}
+                      checked={wallIncluded[`${activeModuleId}_front`] ?? true}
+                      onChange={(e) => setWallIncludedFor(`${activeModuleId}_front`, e.target.checked)}
                     />
                     Include front wall
                   </label>
@@ -255,42 +413,11 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
                   <p className="text-xs text-gray-500 mb-3">Select default door type (front wall).</p>
                   <DoorSelector />
                 </section>
-                <section className="option-group">
-                  <h3 className="section-heading">Place Door</h3>
-                  <p className="text-xs text-gray-500 mb-3">
-                    Choose a door type, then click any wall in the 3D view to place it.
-                  </p>
-                  <div className="flex flex-wrap gap-2 mb-1">
-                    {[
-                      { label: "Single Door", type: "single" },
-                      { label: "Stable Door", type: "stable" },
-                      { label: "Double Door", type: "double" },
-                      { label: "Double with Windows", type: "double_with_windows" },
-                    ].map(({ label, type }) => {
-                      const isActive =
-                        placementDrag?.item?.kind === "door" && placementDrag.item.doorType === type;
-                      return (
-                        <button
-                          key={type}
-                          type="button"
-                          className={`px-2 py-1 text-xs rounded ${
-                            isActive
-                              ? "bg-[#2A7F7F] text-white"
-                              : "btn-option btn-option-inactive"
-                          }`}
-                          onPointerDown={startPlacementDrag({ kind: "door", doorType: type })}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {placementDrag?.item?.kind === "door" && (
-                    <p className="mt-1 text-[11px] text-gray-500">
-                      Door placement active. Drag onto a wall in the 3D view to place the door.
-                    </p>
-                  )}
-                </section>
+                <DoorPlacementSection
+                  heading="Front Wall Doors"
+                  placementDrag={placementDrag}
+                  startPlacementDrag={startPlacementDrag}
+                />
                 <section className="option-group">
                   <h3 className="section-heading">Front Wall Windows</h3>
                   <p className="text-xs text-gray-500 mb-3">
@@ -341,18 +468,42 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
 
             {builderStep === "LEFT_SIDE" && (
               <div className="space-y-6">
+                {modules.length > 1 && (
+                  <section className="option-group">
+                    <h3 className="section-heading">Edit Module</h3>
+                    <div className="flex flex-wrap gap-1.5">
+                      {modules.map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setActiveModuleId(m.id)}
+                          className={`px-2 py-1 text-xs rounded ${
+                            activeModuleId === m.id ? "bg-[#2A7F7F] text-white" : "btn-option btn-option-inactive"
+                          }`}
+                        >
+                          Module {m.id}
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                )}
                 <section className="option-group">
                   <h3 className="section-heading">Left Side Wall</h3>
                   <label className="flex items-center gap-2 text-xs text-gray-600">
                     <input
                       type="checkbox"
                       className="rounded border-gray-300"
-                      checked={includeLeftWall}
-                      onChange={(e) => setIncludeLeftWall(e.target.checked)}
+                      checked={wallIncluded[`${activeModuleId}_left`] ?? true}
+                      onChange={(e) => setWallIncludedFor(`${activeModuleId}_left`, e.target.checked)}
                     />
                     Include left wall
                   </label>
                 </section>
+                <DoorPlacementSection
+                  heading="Left Side Doors"
+                  placementDrag={placementDrag}
+                  startPlacementDrag={startPlacementDrag}
+                />
                 <section className="option-group">
                   <h3 className="section-heading">Left Side Windows</h3>
                   <p className="text-xs text-gray-500 mb-3">
@@ -403,18 +554,42 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
 
             {builderStep === "RIGHT_SIDE" && (
               <div className="space-y-6">
+                {modules.length > 1 && (
+                  <section className="option-group">
+                    <h3 className="section-heading">Edit Module</h3>
+                    <div className="flex flex-wrap gap-1.5">
+                      {modules.map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setActiveModuleId(m.id)}
+                          className={`px-2 py-1 text-xs rounded ${
+                            activeModuleId === m.id ? "bg-[#2A7F7F] text-white" : "btn-option btn-option-inactive"
+                          }`}
+                        >
+                          Module {m.id}
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                )}
                 <section className="option-group">
                   <h3 className="section-heading">Right Side Wall</h3>
                   <label className="flex items-center gap-2 text-xs text-gray-600">
                     <input
                       type="checkbox"
                       className="rounded border-gray-300"
-                      checked={includeRightWall}
-                      onChange={(e) => setIncludeRightWall(e.target.checked)}
+                      checked={wallIncluded[`${activeModuleId}_right`] ?? true}
+                      onChange={(e) => setWallIncludedFor(`${activeModuleId}_right`, e.target.checked)}
                     />
                     Include right wall
                   </label>
                 </section>
+                <DoorPlacementSection
+                  heading="Right Side Doors"
+                  placementDrag={placementDrag}
+                  startPlacementDrag={startPlacementDrag}
+                />
                 <section className="option-group">
                   <h3 className="section-heading">Right Side Windows</h3>
                   <p className="text-xs text-gray-500 mb-3">
@@ -465,18 +640,42 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
 
             {builderStep === "BACK_WALL" && (
               <div className="space-y-6">
+                {modules.length > 1 && (
+                  <section className="option-group">
+                    <h3 className="section-heading">Edit Module</h3>
+                    <div className="flex flex-wrap gap-1.5">
+                      {modules.map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setActiveModuleId(m.id)}
+                          className={`px-2 py-1 text-xs rounded ${
+                            activeModuleId === m.id ? "bg-[#2A7F7F] text-white" : "btn-option btn-option-inactive"
+                          }`}
+                        >
+                          Module {m.id}
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                )}
                 <section className="option-group">
                   <h3 className="section-heading">Back Wall</h3>
                   <label className="flex items-center gap-2 text-xs text-gray-600">
                     <input
                       type="checkbox"
                       className="rounded border-gray-300"
-                      checked={includeBackWall}
-                      onChange={(e) => setIncludeBackWall(e.target.checked)}
+                      checked={wallIncluded[`${activeModuleId}_back`] ?? true}
+                      onChange={(e) => setWallIncludedFor(`${activeModuleId}_back`, e.target.checked)}
                     />
                     Include back wall
                   </label>
                 </section>
+                <DoorPlacementSection
+                  heading="Back Wall Doors"
+                  placementDrag={placementDrag}
+                  startPlacementDrag={startPlacementDrag}
+                />
                 <section className="option-group">
                   <h3 className="section-heading">Back Wall Windows</h3>
                   <p className="text-xs text-gray-500 mb-3">
@@ -527,6 +726,25 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
 
             {builderStep === "ROOF" && (
               <div className="space-y-6">
+                {modules.length > 1 && (
+                  <section className="option-group">
+                    <h3 className="section-heading">Edit Module</h3>
+                    <div className="flex flex-wrap gap-1.5">
+                      {modules.map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setActiveModuleId(m.id)}
+                          className={`px-2 py-1 text-xs rounded ${
+                            activeModuleId === m.id ? "bg-[#2A7F7F] text-white" : "btn-option btn-option-inactive"
+                          }`}
+                        >
+                          Module {m.id}
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                )}
                 <section className="option-group">
                   <h3 className="section-heading">Roof Style</h3>
                   <p className="text-xs text-gray-500 mb-3">Select apex or pent roof.</p>
@@ -538,8 +756,8 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
                     <input
                       type="checkbox"
                       className="rounded border-gray-300"
-                      checked={includeRoof}
-                      onChange={(e) => setIncludeRoof(e.target.checked)}
+                      checked={roofByModule[activeModuleId]?.visible ?? false}
+                      onChange={(e) => setRoofVisibleFor(activeModuleId, e.target.checked)}
                     />
                     Include roof
                   </label>
@@ -590,13 +808,15 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
             ? placementDrag.item.windowType === "DOUBLE"
               ? "Double Window"
               : "Standard Window"
-            : (() => {
-                const t = placementDrag.item.doorType;
-                if (t === "stable") return "Stable Door";
-                if (t === "double") return "Double Door";
-                if (t === "double_with_windows") return "Double w/ Windows";
-                return "Single Door";
-              })()}
+            : placementDrag.item.kind === "module"
+              ? "Module"
+              : (() => {
+                  const t = placementDrag.item.doorType;
+                  if (t === "stable") return "Stable Door";
+                  if (t === "double") return "Double Door";
+                  if (t === "double_with_windows") return "Double w/ Windows";
+                  return "Single Door";
+                })()}
         </div>
       )}
     </>

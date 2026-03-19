@@ -9,19 +9,24 @@ const OPTIONS = [
 ];
 
 export default function DoorSelector() {
-  const { doorType, setDoorType, doorFitsWall } = useConfigurator();
+  const { doorsByWall, placeDoorAt, removeDoor, doorFitsWall } = useConfigurator();
+  const frontDoorType = doorsByWall.front?.type ?? "none";
 
   return (
     <div className="flex flex-col gap-2">
       {OPTIONS.map((opt) => {
-        const fits = doorFitsWall(opt.type);
+        const fits = doorFitsWall("front", opt.type);
         return (
           <button
             key={opt.type}
             type="button"
-            onClick={() => fits && setDoorType(opt.type)}
+            onClick={() => {
+              if (!fits) return;
+              if (opt.type === "none") removeDoor("front");
+              else placeDoorAt("front", doorsByWall.front?.centerX ?? 0, opt.type);
+            }}
             disabled={!fits}
-            className={`btn-option text-left ${doorType === opt.type ? "btn-option-active" : "btn-option-inactive"} disabled:opacity-50 disabled:cursor-not-allowed`}
+            className={`btn-option text-left ${frontDoorType === opt.type ? "btn-option-active" : "btn-option-inactive"} disabled:opacity-50 disabled:cursor-not-allowed`}
             title={!fits ? "Door does not fit this wall width" : undefined}
           >
             {opt.name}

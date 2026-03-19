@@ -20,7 +20,7 @@ function easeInOutCubic(t) {
 export default function CameraController() {
   const { camera } = useThree();
   const { builderStep, isDraggingElement } = useBuilder();
-  const { shedConfig } = useConfigurator();
+  const { shedConfig, structureBounds } = useConfigurator();
   const controlsRef = useRef(null);
 
   const startPosition = useRef(new THREE.Vector3());
@@ -30,22 +30,29 @@ export default function CameraController() {
   const isAnimating = useRef(false);
   const animProgress = useRef(0);
 
-  const width = shedConfig.width / 12;
-  const depth = shedConfig.depth / 12;
-  const wallHeight = shedConfig.wallHeight / 12;
+  const bounds = structureBounds ?? {
+    centerX: 0, centerZ: 0, spanX: shedConfig?.width ?? 96, spanZ: shedConfig?.depth ?? 72,
+  };
+  const width = bounds.spanX / 12;
+  const depth = bounds.spanZ / 12;
+  const centerX = (bounds.centerX ?? 0) / 12;
+  const centerZ = (bounds.centerZ ?? 0) / 12;
+  const wallHeight = (shedConfig?.wallHeight ?? 66) / 12;
   const radius = Math.sqrt(width * width + depth * depth) / 2;
   const frontDistance = radius * 2.2;
   const sideDistance = radius * 2.2;
+  const largestSpan = Math.max(bounds.spanX ?? 0, bounds.spanZ ?? 0) / 12;
+  const maxDistance = Math.max(25, largestSpan * 2.5);
 
   const stepCameras = useMemo(() => ({
-    BASE: { position: [radius * 1.2, wallHeight * 1.2, radius * 1.2], target: [0, 0, 0] },
-    FRONT_WALL: { position: [0, wallHeight * 0.9, -frontDistance], target: [0, wallHeight * 0.5, 0] },
-    LEFT_SIDE: { position: [sideDistance, wallHeight * 0.9, 0], target: [0, wallHeight * 0.5, 0] },
-    RIGHT_SIDE: { position: [sideDistance, wallHeight * 0.9, 0], target: [0, wallHeight * 0.5, 0] },
-    BACK_WALL: { position: [0, wallHeight * 0.9, frontDistance], target: [0, wallHeight * 0.5, 0] },
-    ROOF: { position: [width * 0.8, wallHeight * 1.8, depth * 0.8], target: [0, wallHeight * 0.5, 0] },
-    INTERIOR: { position: [width * 0.4, wallHeight * 0.8, depth * 0.4], target: [0, wallHeight * 0.5, 0] },
-  }), [width, depth, wallHeight, radius, frontDistance, sideDistance]);
+    BASE: { position: [centerX + radius * 1.2, wallHeight * 1.2, centerZ + radius * 1.2], target: [centerX, wallHeight * 0.5, centerZ] },
+    FRONT_WALL: { position: [centerX, wallHeight * 0.9, centerZ - frontDistance], target: [centerX, wallHeight * 0.5, centerZ] },
+    LEFT_SIDE: { position: [centerX + sideDistance, wallHeight * 0.9, centerZ], target: [centerX, wallHeight * 0.5, centerZ] },
+    RIGHT_SIDE: { position: [centerX + sideDistance, wallHeight * 0.9, centerZ], target: [centerX, wallHeight * 0.5, centerZ] },
+    BACK_WALL: { position: [centerX, wallHeight * 0.9, centerZ + frontDistance], target: [centerX, wallHeight * 0.5, centerZ] },
+    ROOF: { position: [centerX + width * 0.8, wallHeight * 1.8, centerZ + depth * 0.8], target: [centerX, wallHeight * 0.5, centerZ] },
+    INTERIOR: { position: [centerX + width * 0.4, wallHeight * 0.8, centerZ + depth * 0.4], target: [centerX, wallHeight * 0.5, centerZ] },
+  }), [width, depth, wallHeight, radius, frontDistance, sideDistance, centerX, centerZ]);
 
   useEffect(() => {
     if (!AUTO_MOVE_CAMERA_ON_STEP) return;
@@ -83,8 +90,8 @@ export default function CameraController() {
       ref={controlsRef}
       makeDefault
       minDistance={4}
-      maxDistance={25}
-      target={[0, targetY, 0]}
+      maxDistance={maxDistance}
+      target={[centerX, targetY, centerZ]}
       enablePan
       enabled={!isDraggingElement}
     />

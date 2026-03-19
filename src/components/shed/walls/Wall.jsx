@@ -1,4 +1,4 @@
-import { Box } from "@react-three/drei";
+import { Box, Line } from "@react-three/drei";
 import { useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { useConfigurator } from "../../../context/ConfiguratorContext";
@@ -50,6 +50,7 @@ function makeGableGeometry(width, eaveHeight, peakHeight) {
 
 const Wall = ({
   wallId,
+  moduleId: moduleIdProp,
   width,
   profile,
   position,
@@ -63,7 +64,8 @@ const Wall = ({
 }) => {
   const wallGroupRef = useRef();
   const dragPlaneRef = useRef();
-  const { shedConfig, setWindowPosition, windowTypes = {}, wallHeightType, roofStyle, addWindowAt, placeDoorAt, removeWindow, setDoorType } = useConfigurator();
+  const { shedConfig, setWindowPosition, windowTypes = {}, wallHeightType, roofStyle, addWindowAt, placeDoorAt, removeWindow, modules, activeModuleId } = useConfigurator();
+  const owningModuleId = moduleIdProp ?? (typeof wallId === "string" && wallId.includes("_") ? wallId.split("_")[0] : modules?.[0]?.id ?? "A");
   const { selectedElementId, showFraming, debugShowDragPlanes, placementTool, setPlacementTool, placementDrag, setPlacementDrag } = useBuilder();
   const [isPlacementHover, setIsPlacementHover] = useState(false);
   const { woodFraming } = useShedTexturesContext();
@@ -76,7 +78,8 @@ const Wall = ({
   // For left and back walls, local X start/end are opposite to profile convention; use normalized profile so high/low sides match physical corners.
   const profileForTrapezoid = useMemo(() => {
     if (!isTrapezoidal || !profile) return profile;
-    if (wallId !== "left" && wallId !== "back") return profile;
+    const isLeftOrBack = wallId === "left" || wallId === "back" || (typeof wallId === "string" && (wallId.endsWith("_left") || wallId.endsWith("_back")));
+    if (!isLeftOrBack) return profile;
     return { ...profile, heightAtStart: profile.heightAtEnd, heightAtEnd: profile.heightAtStart };
   }, [isTrapezoidal, profile, wallId]);
   const hStart = (profileForTrapezoid ?? profile)?.heightAtStart ?? height;
@@ -178,7 +181,28 @@ const Wall = ({
   );
   const wallGeometry = trapezoidGeometry || gableGeometry;
 
+  const mod = modules?.find((m) => m.id === owningModuleId);
+  const ghostMod = modules?.find((m) => m.id === activeModuleId) || modules?.[0];
+  const ghostW = ghostMod?.width ?? 96;
+  const ghostD = ghostMod?.depth ?? 72;
+  const modW = mod?.width ?? 96;
+  const modD = mod?.depth ?? 72;
+  const side = typeof wallId === "string" && wallId.includes("_") ? wallId.split("_")[1] : null;
+  const ghostPosition = useMemo(() => {
+    if (!side) return [0, 0, 0];
+    switch (side) {
+      case "right": return [modW / 2 + ghostW / 2, 0, 0];
+      case "left": return [-modW / 2 - ghostW / 2, 0, 0];
+      case "front": return [0, 0, -modD / 2 - ghostD / 2];
+      case "back": return [0, 0, modD / 2 + ghostD / 2];
+      default: return [0, 0, 0];
+    }
+  }, [side, modW, modD, ghostW, ghostD]);
+
+  const showModuleGhost = placementTool?.kind === "module" && isPlacementHover && side;
+
   return (
+    <>
     <group ref={wallGroupRef} position={position} rotation={rotation}>
       <WallGrid
         wallId={wallId}
@@ -197,13 +221,13 @@ const Wall = ({
         ref={dragPlaneRef}
         position={[0, 0, 0.2 * exteriorZSign]}
         onPointerOver={(e) => {
-          if (placementTool?.kind === "window") {
+          if (placementTool?.kind === "window" || placementTool?.kind === "door" || placementTool?.kind === "module") {
             e.stopPropagation();
             setIsPlacementHover(true);
           }
         }}
         onPointerOut={(e) => {
-          if (placementTool?.kind === "window") {
+          if (placementTool?.kind === "window" || placementTool?.kind === "door" || placementTool?.kind === "module") {
             e.stopPropagation();
             setIsPlacementHover(false);
           }
@@ -227,13 +251,13 @@ const Wall = ({
         <meshBasicMaterial
           side={THREE.DoubleSide}
           color={
-            (placementTool?.kind === "window" || placementTool?.kind === "door") && isPlacementHover
+            (placementTool?.kind === "window" || placementTool?.kind === "door" || placementTool?.kind === "module") && isPlacementHover
               ? "#55cc88"
               : "#3388ff"
           }
           transparent
           opacity={
-            placementTool?.kind === "window" || placementTool?.kind === "door"
+            placementTool?.kind === "window" || placementTool?.kind === "door" || placementTool?.kind === "module"
               ? (isPlacementHover ? 0.18 : 0.08)
               : (debugShowDragPlanes ? 0.25 : 0)
           }
@@ -355,6 +379,22 @@ const Wall = ({
         />
       ))}
     </group>
+    {showModuleGhost && (
+      <group position={ghostPosition}>
+        <Line
+          points={[
+            [-ghostW / 2, 0.5, -ghostD / 2],
+            [ghostW / 2, 0.5, -ghostD / 2],
+            [ghostW / 2, 0.5, ghostD / 2],
+            [-ghostW / 2, 0.5, ghostD / 2],
+            [-ghostW / 2, 0.5, -ghostD / 2],
+          ]}
+          color="#2A7F7F"
+          lineWidth={2}
+        />
+      </group>
+    )}
+    </>
   );
 };
 

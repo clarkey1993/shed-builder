@@ -2,7 +2,11 @@ import { useConfigurator } from "../../context/ConfiguratorContext";
 import shedData from "../../shedData.json";
 
 export default function Summary() {
-  const { size, roofStyle, wallHeightType, doorType, windows } = useConfigurator();
+  const { size, roofStyle, wallHeightType, doorsByWall, windows } = useConfigurator();
+  const doorSummary = ["front", "back", "left", "right"]
+    .filter((w) => doorsByWall[w]?.type && doorsByWall[w].type !== "none")
+    .map((w) => `${w} (${doorsByWall[w].type})`)
+    .join(", ") || "none";
   const totalHeight =
     roofStyle === "apex"
       ? shedData.apex_roof_dims[size.width]
@@ -16,7 +20,7 @@ export default function Summary() {
         <li><span className="font-medium text-gray-700">Size:</span> {size.width}ft × {size.depth}ft</li>
         <li><span className="font-medium text-gray-700">Roof:</span> {roofStyle}</li>
         <li><span className="font-medium text-gray-700">Wall height:</span> {wallHeightType}</li>
-        <li><span className="font-medium text-gray-700">Door:</span> {doorType}</li>
+        <li><span className="font-medium text-gray-700">Doors:</span> {doorSummary}</li>
         <li><span className="font-medium text-gray-700">Windows:</span> {windows ? "Yes" : "No"}</li>
         <li><span className="font-medium text-gray-700">Peak height:</span> ~{totalHeight}"</li>
       </ul>

@@ -1,8 +1,8 @@
 import { useMemo } from "react";
-import { useConfigurator } from "../../context/ConfiguratorContext";
+import { useConfigurator, ModuleRoofContext } from "../../context/ConfiguratorContext";
 import { useInteriorView } from "../../context/InteriorViewContext";
 import { useBuilder } from "../../context/BuilderContext";
-import { Box } from "@react-three/drei";
+import { Box, Line } from "@react-three/drei";
 import { ApexRoof, PentRoof, Wall } from "./index";
 import InternalPartition from "./InternalPartition";
 import { useShedTexturesContext } from "../../context/ShedTextureContext";
@@ -14,17 +14,13 @@ const CORNER_TRIM_THICKNESS = 1.5;
 const Shed = () => {
   const {
     shedConfig,
-    roofStyle,
-    pentSlopeDirection,
     windowPositions,
-    doorType,
-    doorWallId,
-    frontDoorCenterX,
-    includeFrontWall,
-    includeLeftWall,
-    includeRightWall,
-    includeBackWall,
-    includeRoof,
+    doorsByWall,
+    modules,
+    wallIncluded,
+    getVisibleWallSegments,
+    activeModuleId,
+    roofByModule,
   } = useConfigurator();
   const { viewMode, partitions } = useInteriorView();
   const { builderStep, showFraming, debugShowFullShed } = useBuilder();
@@ -32,27 +28,29 @@ const Shed = () => {
 
   const isInterior = viewMode === "interior";
 
-  const floorWidth = shedConfig.width;
-  const floorDepth = shedConfig.depth;
   const apexWallHeight = shedConfig.wallHeight;
   const apexPeakHeight = shedConfig.roofPeakHeight;
   const floorThickness = shedConfig.framing.upright_middles_thickness_x;
 
-  const wallProfiles = useMemo(
-    () => getWallProfiles(roofStyle, pentSlopeDirection, floorWidth, floorDepth, apexWallHeight, apexPeakHeight),
-    [roofStyle, pentSlopeDirection, floorWidth, floorDepth, apexWallHeight, apexPeakHeight]
+  const primaryModule = modules[0];
+  const primaryRoof = roofByModule[primaryModule?.id] ?? { type: "apex", pentSlopeDirection: "front_to_back" };
+  const primaryW = primaryModule?.width ?? 94;
+  const primaryD = primaryModule?.depth ?? 72;
+  const defaultWallProfiles = useMemo(
+    () => getWallProfiles(primaryRoof.type, primaryRoof.pentSlopeDirection, primaryW, primaryD, apexWallHeight, apexPeakHeight),
+    [primaryRoof.type, primaryRoof.pentSlopeDirection, primaryW, primaryD, apexWallHeight, apexPeakHeight]
   );
-  const { cornerHeights } = wallProfiles;
-  const wallHeightForPartitions = roofStyle === "apex" ? apexWallHeight : (cornerHeights.frontLeft + cornerHeights.backLeft) / 2;
+  const { cornerHeights } = defaultWallProfiles;
+  const wallHeightForPartitions = primaryRoof.type === "apex" ? apexWallHeight : (cornerHeights.frontLeft + cornerHeights.backLeft) / 2;
 
   const showBase = true;
-  const showFrontWall = debugShowFullShed || includeFrontWall;
-  const showLeftWall = debugShowFullShed || includeLeftWall;
-  const showRightWall = debugShowFullShed || includeRightWall;
-  const showBackWall = debugShowFullShed || includeBackWall;
+  const getSegmentsForWall = (wallId, wallHalfSpan) => {
+    if (debugShowFullShed) return [{ start: -wallHalfSpan, end: wallHalfSpan }];
+    return getVisibleWallSegments(wallId, wallHalfSpan);
+  };
   const showCornerPosts = debugShowFullShed || builderStep !== "BASE";
-  const showRoof =
-    (debugShowFullShed || includeRoof) && builderStep !== "INTERIOR";
+  const isRoofShownForModule = (moduleId) =>
+    (debugShowFullShed || (roofByModule[moduleId]?.visible ?? false)) && builderStep !== "INTERIOR";
   const showPartitions = builderStep === "INTERIOR" && isInterior;
   const baseCladdingOpacity = (isInterior || builderStep === "INTERIOR") && !debugShowFullShed ? 0.15 : 1;
   const claddingOpacity = showFraming && baseCladdingOpacity === 1 ? 0.82 : baseCladdingOpacity;
@@ -68,27 +66,59 @@ const Shed = () => {
   ) : (
     <meshStandardMaterial color="#8b5a2b" roughness={0.7} />
   );
-  const floorMat = useMemo(() => {
+  const floorMatFor = (modW, modD) => {
     if (!osb) return <meshStandardMaterial color="#a9a9a9" roughness={0.85} />;
     const tex = osb.clone();
-    tex.repeat.set(floorWidth / 24, floorDepth / 24);
+    tex.repeat.set(modW / 24, modD / 24);
     return <meshStandardMaterial map={tex} roughness={0.85} metalness={0} color="#a9a9a9" />;
-  }, [osb, floorWidth, floorDepth]);
+  };
 
   return (
     <group scale={1 / 12}>
-      {/* Floor Bearers - wood texture, slightly varied roughness */}
+      {modules.map((module) => {
+        const modW = module.width;
+        const modD = module.depth;
+        const wallIds = {
+          front: `${module.id}_front`,
+          left: `${module.id}_left`,
+          right: `${module.id}_right`,
+          back: `${module.id}_back`,
+        };
+        const modRoof = roofByModule[module.id] ?? { type: "apex", pentSlopeDirection: "front_to_back" };
+        const modWallProfiles = modW === primaryW && modD === primaryD && modRoof.type === primaryRoof.type && modRoof.pentSlopeDirection === primaryRoof.pentSlopeDirection
+          ? defaultWallProfiles
+          : getWallProfiles(modRoof.type, modRoof.pentSlopeDirection, modW, modD, apexWallHeight, apexPeakHeight);
+        const modCornerHeights = modWallProfiles.cornerHeights || defaultWallProfiles.cornerHeights;
+        const isActive = module.id === activeModuleId && modules.length > 1;
+        return (
+        <ModuleRoofContext.Provider key={module.id} value={module.id}>
+        <group position={[module.offsetX, 0, module.offsetZ]}>
+      {/* Subtle outline for active module when multi-module */}
+      {isActive && (
+        <Line
+          points={[
+            [-modW / 2, 0.5, -modD / 2],
+            [modW / 2, 0.5, -modD / 2],
+            [modW / 2, 0.5, modD / 2],
+            [-modW / 2, 0.5, modD / 2],
+            [-modW / 2, 0.5, -modD / 2],
+          ]}
+          color="#2A7F7F"
+          lineWidth={1}
+        />
+      )}
+      {/* Floor Bearers */}
       {(() => {
         const bearers = [];
         const bearerThickness = 2;
         const bearerSpacing = 12;
-        const numBearers = Math.floor(floorWidth / bearerSpacing) + 1;
+        const numBearers = Math.floor(modW / bearerSpacing) + 1;
         for (let i = 0; i < numBearers; i++) {
-          const bearerX = -floorWidth / 2 + i * bearerSpacing;
+          const bearerX = -modW / 2 + i * bearerSpacing;
           bearers.push(
             <Box
               key={i}
-              args={[bearerThickness, bearerThickness, floorDepth]}
+              args={[bearerThickness, bearerThickness, modD]}
               position={[bearerX, -floorThickness / 2 - bearerThickness / 2, 0]}
               castShadow
             >
@@ -99,86 +129,136 @@ const Shed = () => {
         return bearers;
       })()}
 
-      {/* Floor - OSB texture */}
-      <Box args={[floorWidth, floorThickness, floorDepth]} position={[0, -floorThickness / 2, 0]} receiveShadow castShadow>
-        {floorMat}
+      {/* Floor */}
+      <Box args={[modW, floorThickness, modD]} position={[0, -floorThickness / 2, 0]} receiveShadow castShadow>
+        {floorMatFor(modW, modD)}
       </Box>
 
-      {/* Corner trims (vertical boards) - apex only; pent uses clean wall/roof join without uprights */}
-      {showCornerPosts && roofStyle === "apex" && (
+      {/* Corner trims - apex only */}
+      {showCornerPosts && modRoof.type === "apex" && (
         <>
-          <Box args={[CORNER_TRIM_WIDTH, cornerHeights.frontLeft, CORNER_TRIM_THICKNESS]} position={[-floorWidth / 2 - CORNER_TRIM_THICKNESS / 2, cornerHeights.frontLeft / 2, -floorDepth / 2]} castShadow>{cornerPostMat}</Box>
-          <Box args={[CORNER_TRIM_THICKNESS, cornerHeights.frontLeft, CORNER_TRIM_WIDTH]} position={[-floorWidth / 2, cornerHeights.frontLeft / 2, -floorDepth / 2 - CORNER_TRIM_THICKNESS / 2]} castShadow>{cornerPostMat}</Box>
-          <Box args={[CORNER_TRIM_WIDTH, cornerHeights.frontRight, CORNER_TRIM_THICKNESS]} position={[floorWidth / 2 + CORNER_TRIM_THICKNESS / 2, cornerHeights.frontRight / 2, -floorDepth / 2]} castShadow>{cornerPostMat}</Box>
-          <Box args={[CORNER_TRIM_THICKNESS, cornerHeights.frontRight, CORNER_TRIM_WIDTH]} position={[floorWidth / 2, cornerHeights.frontRight / 2, -floorDepth / 2 - CORNER_TRIM_THICKNESS / 2]} castShadow>{cornerPostMat}</Box>
-          <Box args={[CORNER_TRIM_WIDTH, cornerHeights.backLeft, CORNER_TRIM_THICKNESS]} position={[-floorWidth / 2 - CORNER_TRIM_THICKNESS / 2, cornerHeights.backLeft / 2, floorDepth / 2]} castShadow>{cornerPostMat}</Box>
-          <Box args={[CORNER_TRIM_THICKNESS, cornerHeights.backLeft, CORNER_TRIM_WIDTH]} position={[-floorWidth / 2, cornerHeights.backLeft / 2, floorDepth / 2 + CORNER_TRIM_THICKNESS / 2]} castShadow>{cornerPostMat}</Box>
-          <Box args={[CORNER_TRIM_WIDTH, cornerHeights.backRight, CORNER_TRIM_THICKNESS]} position={[floorWidth / 2 + CORNER_TRIM_THICKNESS / 2, cornerHeights.backRight / 2, floorDepth / 2]} castShadow>{cornerPostMat}</Box>
-          <Box args={[CORNER_TRIM_THICKNESS, cornerHeights.backRight, CORNER_TRIM_WIDTH]} position={[floorWidth / 2, cornerHeights.backRight / 2, floorDepth / 2 + CORNER_TRIM_THICKNESS / 2]} castShadow>{cornerPostMat}</Box>
+          <Box args={[CORNER_TRIM_WIDTH, modCornerHeights.frontLeft, CORNER_TRIM_THICKNESS]} position={[-modW / 2 - CORNER_TRIM_THICKNESS / 2, modCornerHeights.frontLeft / 2, -modD / 2]} castShadow>{cornerPostMat}</Box>
+          <Box args={[CORNER_TRIM_THICKNESS, modCornerHeights.frontLeft, CORNER_TRIM_WIDTH]} position={[-modW / 2, modCornerHeights.frontLeft / 2, -modD / 2 - CORNER_TRIM_THICKNESS / 2]} castShadow>{cornerPostMat}</Box>
+          <Box args={[CORNER_TRIM_WIDTH, modCornerHeights.frontRight, CORNER_TRIM_THICKNESS]} position={[modW / 2 + CORNER_TRIM_THICKNESS / 2, modCornerHeights.frontRight / 2, -modD / 2]} castShadow>{cornerPostMat}</Box>
+          <Box args={[CORNER_TRIM_THICKNESS, modCornerHeights.frontRight, CORNER_TRIM_WIDTH]} position={[modW / 2, modCornerHeights.frontRight / 2, -modD / 2 - CORNER_TRIM_THICKNESS / 2]} castShadow>{cornerPostMat}</Box>
+          <Box args={[CORNER_TRIM_WIDTH, modCornerHeights.backLeft, CORNER_TRIM_THICKNESS]} position={[-modW / 2 - CORNER_TRIM_THICKNESS / 2, modCornerHeights.backLeft / 2, modD / 2]} castShadow>{cornerPostMat}</Box>
+          <Box args={[CORNER_TRIM_THICKNESS, modCornerHeights.backLeft, CORNER_TRIM_WIDTH]} position={[-modW / 2, modCornerHeights.backLeft / 2, modD / 2 + CORNER_TRIM_THICKNESS / 2]} castShadow>{cornerPostMat}</Box>
+          <Box args={[CORNER_TRIM_WIDTH, modCornerHeights.backRight, CORNER_TRIM_THICKNESS]} position={[modW / 2 + CORNER_TRIM_THICKNESS / 2, modCornerHeights.backRight / 2, modD / 2]} castShadow>{cornerPostMat}</Box>
+          <Box args={[CORNER_TRIM_THICKNESS, modCornerHeights.backRight, CORNER_TRIM_WIDTH]} position={[modW / 2, modCornerHeights.backRight / 2, modD / 2 + CORNER_TRIM_THICKNESS / 2]} castShadow>{cornerPostMat}</Box>
         </>
       )}
 
-      {/* Walls: profiles from getWallProfiles (apex = same height; pent = rectangular or trapezoidal per slope direction) */}
-      {showFrontWall && (
-        <Wall
-          wallId="front"
-          width={floorWidth}
-          profile={wallProfiles.front}
-          position={[0, getWallCenterY(wallProfiles.front), -floorDepth / 2]}
-          rotation={[0, 0, 0]}
-          exteriorZSign={-1}
-          hasDoor={doorWallId === "front" && doorType !== "none"}
-          doorType={doorType}
-          windowPositions={windowPositions.front}
-          claddingOpacity={claddingOpacity}
-          doorCenterX={doorWallId === "front" ? frontDoorCenterX : 0}
+      {/* Walls - scoped wallIds, per-module visibility, segmented for joined walls */}
+      {getSegmentsForWall(wallIds.front, modW / 2).map((seg, i) => {
+        const segWidth = seg.end - seg.start;
+        const segCenterX = (seg.start + seg.end) / 2;
+        const frontSegments = getVisibleWallSegments(wallIds.front, modW / 2);
+        const hasOpenings = frontSegments.length === 1 && segWidth >= modW - 0.01;
+        return (
+          <Wall
+            key={`${wallIds.front}_seg_${i}`}
+            wallId={wallIds.front}
+            moduleId={module.id}
+            width={segWidth}
+            profile={modWallProfiles.front}
+            position={[segCenterX, getWallCenterY(modWallProfiles.front), -modD / 2]}
+            rotation={[0, 0, 0]}
+            exteriorZSign={-1}
+            hasDoor={hasOpenings && (doorsByWall[wallIds.front]?.type ?? "none") !== "none"}
+            doorType={hasOpenings ? (doorsByWall[wallIds.front]?.type ?? "none") : "none"}
+            windowPositions={hasOpenings ? (windowPositions[wallIds.front] ?? []) : []}
+            claddingOpacity={claddingOpacity}
+            doorCenterX={doorsByWall[wallIds.front]?.centerX ?? 0}
+          />
+        );
+      })}
+      {getSegmentsForWall(wallIds.back, modW / 2).map((seg, i) => {
+        const segWidth = seg.end - seg.start;
+        const segCenterX = (seg.start + seg.end) / 2;
+        const backSegments = getVisibleWallSegments(wallIds.back, modW / 2);
+        const hasOpenings = backSegments.length === 1 && segWidth >= modW - 0.01;
+        return (
+          <Wall
+            key={`${wallIds.back}_seg_${i}`}
+            wallId={wallIds.back}
+            moduleId={module.id}
+            width={segWidth}
+            profile={modWallProfiles.back}
+            position={[segCenterX, getWallCenterY(modWallProfiles.back), modD / 2]}
+            rotation={[0, Math.PI, 0]}
+            exteriorZSign={-1}
+            hasDoor={hasOpenings && (doorsByWall[wallIds.back]?.type ?? "none") !== "none"}
+            doorType={hasOpenings ? (doorsByWall[wallIds.back]?.type ?? "none") : "none"}
+            windowPositions={hasOpenings ? (windowPositions[wallIds.back] ?? []) : []}
+            claddingOpacity={claddingOpacity}
+            doorCenterX={doorsByWall[wallIds.back]?.centerX ?? 0}
+          />
+        );
+      })}
+      {getSegmentsForWall(wallIds.left, modD / 2).map((seg, i) => {
+        const segWidth = seg.end - seg.start;
+        const segCenterZ = (seg.start + seg.end) / 2;
+        const leftSegments = getVisibleWallSegments(wallIds.left, modD / 2);
+        const hasOpenings = leftSegments.length === 1 && segWidth >= modD - 0.01;
+        return (
+          <Wall
+            key={`${wallIds.left}_seg_${i}`}
+            wallId={wallIds.left}
+            moduleId={module.id}
+            width={segWidth}
+            profile={modWallProfiles.left}
+            position={[-modW / 2, getWallCenterY(modWallProfiles.left), segCenterZ]}
+            rotation={[0, Math.PI / 2, 0]}
+            exteriorZSign={-1}
+            hasDoor={hasOpenings && (doorsByWall[wallIds.left]?.type ?? "none") !== "none"}
+            doorType={hasOpenings ? (doorsByWall[wallIds.left]?.type ?? "none") : "none"}
+            windowPositions={hasOpenings ? (windowPositions[wallIds.left] ?? []) : []}
+            claddingOpacity={claddingOpacity}
+            doorCenterX={doorsByWall[wallIds.left]?.centerX ?? 0}
+          />
+        );
+      })}
+      {getSegmentsForWall(wallIds.right, modD / 2).map((seg, i) => {
+        const segWidth = seg.end - seg.start;
+        const segCenterZ = (seg.start + seg.end) / 2;
+        const rightSegments = getVisibleWallSegments(wallIds.right, modD / 2);
+        const hasOpenings = rightSegments.length === 1 && segWidth >= modD - 0.01;
+        return (
+          <Wall
+            key={`${wallIds.right}_seg_${i}`}
+            wallId={wallIds.right}
+            moduleId={module.id}
+            width={segWidth}
+            profile={modWallProfiles.right}
+            position={[modW / 2, getWallCenterY(modWallProfiles.right), segCenterZ]}
+            rotation={[0, -Math.PI / 2, 0]}
+            exteriorZSign={-1}
+            hasDoor={hasOpenings && (doorsByWall[wallIds.right]?.type ?? "none") !== "none"}
+            doorType={hasOpenings ? (doorsByWall[wallIds.right]?.type ?? "none") : "none"}
+            windowPositions={hasOpenings ? (windowPositions[wallIds.right] ?? []) : []}
+            claddingOpacity={claddingOpacity}
+            doorCenterX={doorsByWall[wallIds.right]?.centerX ?? 0}
+          />
+        );
+      })}
+
+      {/* Per-module roof - visibility and type scoped per module */}
+      {isRoofShownForModule(module.id) && (modRoof.type === "apex" ? (
+        <ApexRoof width={modW} depth={modD} opacity={roofOpacity} showFraming={showFraming} />
+      ) : (
+        <PentRoof
+          width={modW}
+          depth={modD}
+          opacity={roofOpacity}
+          showFraming={showFraming}
+          slopeDirection={modRoof.pentSlopeDirection}
+          wallProfiles={modWallProfiles}
         />
-      )}
-      {showBackWall && (
-        <Wall
-          wallId="back"
-          width={floorWidth}
-          profile={wallProfiles.back}
-          position={[0, getWallCenterY(wallProfiles.back), floorDepth / 2]}
-          rotation={[0, Math.PI, 0]}
-          exteriorZSign={-1}
-          hasDoor={doorWallId === "back" && doorType !== "none"}
-          doorType={doorType}
-          windowPositions={windowPositions.back}
-          claddingOpacity={claddingOpacity}
-          doorCenterX={doorWallId === "back" ? frontDoorCenterX : 0}
-        />
-      )}
-      {showLeftWall && (
-        <Wall
-          wallId="left"
-          width={floorDepth}
-          profile={wallProfiles.left}
-          position={[-floorWidth / 2, getWallCenterY(wallProfiles.left), 0]}
-          rotation={[0, Math.PI / 2, 0]}
-          exteriorZSign={-1}
-          hasDoor={doorWallId === "left" && doorType !== "none"}
-          doorType={doorType}
-          windowPositions={windowPositions.left}
-          claddingOpacity={claddingOpacity}
-          doorCenterX={doorWallId === "left" ? frontDoorCenterX : 0}
-        />
-      )}
-      {showRightWall && (
-        <Wall
-          wallId="right"
-          width={floorDepth}
-          profile={wallProfiles.right}
-          position={[floorWidth / 2, getWallCenterY(wallProfiles.right), 0]}
-          rotation={[0, -Math.PI / 2, 0]}
-          exteriorZSign={-1}
-          hasDoor={doorWallId === "right" && doorType !== "none"}
-          doorType={doorType}
-          windowPositions={windowPositions.right}
-          claddingOpacity={claddingOpacity}
-          doorCenterX={doorWallId === "right" ? frontDoorCenterX : 0}
-        />
-      )}
+      ))}
+        </group>
+        </ModuleRoofContext.Provider>
+        );
+      })}
 
       {/* Internal Partitions (Interior step only) */}
       {showPartitions &&
@@ -186,25 +266,11 @@ const Shed = () => {
           <InternalPartition
             key={p.id}
             partition={p}
-            floorWidth={floorWidth}
-            floorDepth={floorDepth}
+            floorWidth={primaryW}
+            floorDepth={primaryD}
             wallHeight={wallHeightForPartitions}
           />
         ))}
-
-      {/* Roof */}
-      {showRoof && (roofStyle === "apex" ? (
-        <ApexRoof width={floorWidth} depth={floorDepth} opacity={roofOpacity} showFraming={showFraming} />
-      ) : (
-        <PentRoof
-          width={floorWidth}
-          depth={floorDepth}
-          opacity={roofOpacity}
-          showFraming={showFraming}
-          slopeDirection={pentSlopeDirection}
-          wallProfiles={wallProfiles}
-        />
-      ))}
     </group>
   );
 };

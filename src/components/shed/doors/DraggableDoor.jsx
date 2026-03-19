@@ -46,12 +46,12 @@ export default function DraggableDoor({
 }) {
   const { camera, raycaster, gl } = useThree();
   const { isDraggingElement, setIsDraggingElement, setSelectedElementId, selectedElementId, setPointerDownOnInteractive } = useBuilder();
-  const { frontDoorCenterX, setFrontDoorCenterX, setDoorType } = useConfigurator();
+  const { doorsByWall, setDoorPosition, removeDoor } = useConfigurator();
   const ptr = useRef(new THREE.Vector2());
   const didDragRef = useRef(false);
   const startPosRef = useRef({ x: 0, y: 0 });
 
-  const centerX = wallId === "front" ? frontDoorCenterX : 0;
+  const centerX = doorsByWall[wallId]?.centerX ?? 0;
   const isSelected = selectedElementId === `door-${wallId}`;
   // Exterior trim face is at (0.25 + TRIM_T/2) * exteriorZSign = 0.75 * exteriorZSign.
   // Push delete button slightly outward by 0.35 for clear visibility.
@@ -59,7 +59,7 @@ export default function DraggableDoor({
 
   const updateX = useCallback(
     (clientX, clientY) => {
-      if (!dragPlaneRef?.current || !wallGroupRef?.current || wallId !== "front") return;
+      if (!dragPlaneRef?.current || !wallGroupRef?.current) return;
       const rect = gl.domElement.getBoundingClientRect();
       ptr.current.set(
         (clientX - rect.left) / rect.width * 2 - 1,
@@ -71,14 +71,13 @@ export default function DraggableDoor({
         const pt = hits[0].point.clone();
         wallGroupRef.current.worldToLocal(pt);
         const snapped = clampAndSnapDoor(pt.x, wallWidth, doorWidth, windowOpenings);
-        setFrontDoorCenterX(snapped);
+        setDoorPosition(wallId, snapped);
       }
     },
-    [camera, raycaster, gl, dragPlaneRef, wallGroupRef, wallWidth, doorWidth, windowOpenings, setFrontDoorCenterX, wallId]
+    [camera, raycaster, gl, dragPlaneRef, wallGroupRef, wallWidth, doorWidth, windowOpenings, setDoorPosition, wallId]
   );
 
   const onPointerDown = (e) => {
-    if (wallId !== "front") return;
     e.stopPropagation();
     e.target.setPointerCapture(e.pointerId);
     didDragRef.current = false;
@@ -125,7 +124,7 @@ export default function DraggableDoor({
           ]}
           onPointerDown={(e) => {
             e.stopPropagation();
-            setDoorType("none");
+            removeDoor(wallId);
             setSelectedElementId(null);
           }}
         >
