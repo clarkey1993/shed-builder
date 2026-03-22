@@ -1,14 +1,14 @@
 import { useState, useRef, useEffect } from "react";
-import { useConfigurator } from "../../context/ConfiguratorContext";
+import { useConfigurator, VIEW_MODES } from "../../context/ConfiguratorContext";
 import { useBuilder, BUILDER_STEPS } from "../../context/BuilderContext";
 import { LayoutGrid, PanelRight, SquareStack, PanelLeft, Layers, Home, Menu, ChevronLeft, ChevronRight } from "lucide-react";
 import SizePresets from "./SizePresets";
 import RoofSelector from "./RoofSelector";
 import ImageUpload from "./ImageUpload";
 import WallHeightSelector from "./WallHeightSelector";
-import DoorSelector from "./DoorSelector";
 import Summary from "./Summary";
 import InteriorTools from "./InteriorTools";
+import BuildDataInspectionPanel from "./BuildDataInspectionPanel";
 
 const STEP_CONFIG = [
   { id: "BASE", label: "Base", Icon: LayoutGrid, short: "Base" },
@@ -26,7 +26,6 @@ const DOOR_TYPE_OPTIONS = [
   { label: "Single Door", type: "single" },
   { label: "Stable Door", type: "stable" },
   { label: "Double Door", type: "double" },
-  { label: "Double with Windows", type: "double_with_windows" },
 ];
 
 function DoorPlacementSection({ heading, placementDrag, startPlacementDrag }) {
@@ -67,6 +66,13 @@ const WINDOW_TYPE_OPTIONS = [
   { label: "Standard", type: "STANDARD" },
   { label: "Security", type: "SECURITY" },
   { label: "Double", type: "DOUBLE" },
+  { label: "Double Vertical", type: "DOUBLE_VERTICAL" },
+];
+
+const WINDOW_DRAG_OPTIONS = [
+  { label: "Standard Window", type: "STANDARD" },
+  { label: "Double Window", type: "DOUBLE" },
+  { label: "Double Window Vertical", type: "DOUBLE_VERTICAL" },
 ];
 
 function WindowPanel({ wallIds }) {
@@ -147,9 +153,17 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
     placeDoorAt,
     addModule,
     removeModule,
+    createFirstModule,
     modules,
+    viewMode,
+    setViewMode,
   } = useConfigurator();
-  const { builderStep, setBuilderStep, goNext, goPrev, canGoNext, canGoPrev, placementTool, setPlacementTool, placementDrag, setPlacementDrag } = useBuilder();
+  const { builderStep, setBuilderStep, goNext, goPrev, canGoNext, canGoPrev, placementTool, setPlacementTool, placementDrag, setPlacementDrag, setShowFraming } = useBuilder();
+
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode);
+    setShowFraming(mode === VIEW_MODES.CONSTRUCTION);
+  };
   const [collapsed, setCollapsed] = useState(false);
   const currentIndex = BUILDER_STEPS.indexOf(builderStep);
 
@@ -187,8 +201,9 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
           placeDoorAt(wallId, x, latest.item.doorType || "single");
         } else if (latest.item.kind === "module") {
           const [targetModuleId, attachSide] = (wallId || "").split("_");
+          const attachOffset = latest.lastHit?.attachOffset ?? 0;
           if (targetModuleId && attachSide) {
-            addModule(targetModuleId, attachSide);
+            addModule(targetModuleId, attachSide, attachOffset);
           }
         }
       }
@@ -226,6 +241,7 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
           boxShadow: "2px 0 24px rgba(0,0,0,0.04)",
           borderRadius: collapsed ? 0 : "0 12px 12px 0",
         }}
+        onWheel={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col h-full overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
@@ -239,6 +255,30 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
               <span className="text-lg leading-none">←</span>
             </button>
           </div>
+
+          {/* View mode: Client / Construction */}
+          <section className="px-4 pt-3 pb-2">
+            <div className="flex rounded-lg bg-gray-100 p-0.5" role="group" aria-label="View mode">
+              <button
+                type="button"
+                onClick={() => handleViewModeChange(VIEW_MODES.CLIENT)}
+                className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  viewMode === VIEW_MODES.CLIENT ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                Client
+              </button>
+              <button
+                type="button"
+                onClick={() => handleViewModeChange(VIEW_MODES.CONSTRUCTION)}
+                className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  viewMode === VIEW_MODES.CONSTRUCTION ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                Construction
+              </button>
+            </div>
+          </section>
 
           {/* Stepper progress */}
           <nav className="px-4 pt-4 pb-3">
@@ -265,7 +305,10 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
             </div>
           </nav>
 
-          <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-6">
+          <div
+            className="flex-1 overflow-y-auto overflow-x-hidden px-6 pb-6 space-y-6 min-h-0"
+            onWheel={(e) => e.stopPropagation()}
+          >
             {builderStep === "BASE" && (
               <div className="space-y-6">
                 <section className="option-group">
@@ -338,24 +381,26 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
                   </p>
                   <SizePresets />
                 </section>
-                <section className="option-group">
-                  <h3 className="section-heading">Add Module</h3>
-                  <p className="text-xs text-gray-500 mb-2">Drag onto any wall in the 3D view to attach a new module.</p>
-                  <button
-                    type="button"
-                    className={`px-2 py-1 text-xs rounded ${
-                      placementDrag?.item?.kind === "module" ? "bg-[#2A7F7F] text-white" : "btn-option btn-option-inactive"
-                    }`}
-                    onPointerDown={startPlacementDrag({ kind: "module" })}
-                  >
-                    Module
-                  </button>
-                  {placementDrag?.item?.kind === "module" && (
-                    <p className="mt-1 text-[11px] text-gray-500">
-                      Drag onto a wall in the 3D view to place the module.
-                    </p>
-                  )}
-                </section>
+                {modules.length > 0 && (
+                  <section className="option-group">
+                    <h3 className="section-heading">Add Module</h3>
+                    <p className="text-xs text-gray-500 mb-2">Drag onto any wall in the 3D view to attach a new module.</p>
+                    <button
+                      type="button"
+                      className={`px-2 py-1 text-xs rounded ${
+                        placementDrag?.item?.kind === "module" ? "bg-[#2A7F7F] text-white" : "btn-option btn-option-inactive"
+                      }`}
+                      onPointerDown={startPlacementDrag({ kind: "module" })}
+                    >
+                      Module
+                    </button>
+                    {placementDrag?.item?.kind === "module" && (
+                      <p className="mt-1 text-[11px] text-gray-500">
+                        Drag onto a wall in the 3D view to place the module.
+                      </p>
+                    )}
+                  </section>
+                )}
                 {modules.length > 1 && activeModuleId !== "A" && (
                   <section className="option-group">
                     <h3 className="section-heading">Remove Module</h3>
@@ -369,7 +414,14 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
                     </button>
                   </section>
                 )}
-                <button type="button" onClick={goNext} className="btn-primary">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (builderStep === "BASE" && modules.length === 0) createFirstModule();
+                    goNext();
+                  }}
+                  className="btn-primary"
+                >
                   Continue to Front Wall
                 </button>
               </div>
@@ -408,11 +460,6 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
                     Include front wall
                   </label>
                 </section>
-                <section className="option-group">
-                  <h3 className="section-heading">Door</h3>
-                  <p className="text-xs text-gray-500 mb-3">Select default door type (front wall).</p>
-                  <DoorSelector />
-                </section>
                 <DoorPlacementSection
                   heading="Front Wall Doors"
                   placementDrag={placementDrag}
@@ -424,10 +471,7 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
                     Drag window types from the palette onto any wall in the 3D view.
                   </p>
                   <div className="mb-2 flex flex-wrap gap-2">
-                    {[
-                      { label: "Standard Window", type: "STANDARD" },
-                      { label: "Double Window", type: "DOUBLE" },
-                    ].map(({ label, type }) => {
+                    {WINDOW_DRAG_OPTIONS.map(({ label, type }) => {
                       const isActive =
                         placementDrag?.item?.kind === "window" &&
                         placementDrag.item.windowType === type;
@@ -510,10 +554,7 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
                     Drag window types from the palette onto any wall in the 3D view.
                   </p>
                   <div className="mb-2 flex flex-wrap gap-2">
-                    {[
-                      { label: "Standard Window", type: "STANDARD" },
-                      { label: "Double Window", type: "DOUBLE" },
-                    ].map(({ label, type }) => {
+                    {WINDOW_DRAG_OPTIONS.map(({ label, type }) => {
                       const isActive =
                         placementDrag?.item?.kind === "window" &&
                         placementDrag.item.windowType === type;
@@ -596,10 +637,7 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
                     Drag window types from the palette onto any wall in the 3D view.
                   </p>
                   <div className="mb-2 flex flex-wrap gap-2">
-                    {[
-                      { label: "Standard Window", type: "STANDARD" },
-                      { label: "Double Window", type: "DOUBLE" },
-                    ].map(({ label, type }) => {
+                    {WINDOW_DRAG_OPTIONS.map(({ label, type }) => {
                       const isActive =
                         placementDrag?.item?.kind === "window" &&
                         placementDrag.item.windowType === type;
@@ -682,10 +720,7 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
                     Drag window types from the palette onto any wall in the 3D view.
                   </p>
                   <div className="mb-2 flex flex-wrap gap-2">
-                    {[
-                      { label: "Standard Window", type: "STANDARD" },
-                      { label: "Double Window", type: "DOUBLE" },
-                    ].map(({ label, type }) => {
+                    {WINDOW_DRAG_OPTIONS.map(({ label, type }) => {
                       const isActive =
                         placementDrag?.item?.kind === "window" &&
                         placementDrag.item.windowType === type;
@@ -776,6 +811,7 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
             {builderStep === "INTERIOR" && (
               <div className="space-y-6">
                 <InteriorTools />
+                <BuildDataInspectionPanel />
                 <section className="option-group">
                   <h3 className="section-heading">Summary</h3>
                   <Summary />
@@ -807,14 +843,15 @@ export default function Sidebar({ onImageUpload, onGetQuote }) {
           {placementDrag.item.kind === "window"
             ? placementDrag.item.windowType === "DOUBLE"
               ? "Double Window"
-              : "Standard Window"
+              : placementDrag.item.windowType === "DOUBLE_VERTICAL"
+                ? "Double Window Vertical"
+                : "Standard Window"
             : placementDrag.item.kind === "module"
               ? "Module"
-              : (() => {
+              :               (() => {
                   const t = placementDrag.item.doorType;
                   if (t === "stable") return "Stable Door";
                   if (t === "double") return "Double Door";
-                  if (t === "double_with_windows") return "Double w/ Windows";
                   return "Single Door";
                 })()}
         </div>

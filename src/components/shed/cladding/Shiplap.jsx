@@ -170,7 +170,6 @@ const Shiplap = ({
         if (!topRange) return;
       }
 
-      if (rowIdx >= rowYValues.length - 2) console.log("gable apex row", { rowIdx, yBottom, yTop, bottomRange, topRange });
       let segs = [{ start: bottomRange.xLeft, end: bottomRange.xRight }];
       const cut = (minX, maxX) => {
         segs = segs.flatMap((s) => {

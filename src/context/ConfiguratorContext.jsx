@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useMemo, useEffect } from "react";
+import { createContext, useContext, useState, useMemo, useEffect, useCallback } from "react";
 import shedData from "../shedData.json";
 import { getWindowDimensions, getDoorDimensions } from "../systems/openings/getOpeningDimensions";
+import { getBuildModel, getBuildSchedules } from "../lib/buildData";
 import { canFitOneMoreWindow, getDefaultWindowPosition, openingFitsWall, clampWindowPositionToValid, minGapBetween, clampAndSnap } from "../systems/openings/windowPlacement";
 
 const ConfiguratorContext = createContext();
@@ -18,21 +19,47 @@ const getWallWidthForWallId = (modules, cid, isFrontOrBackFn) =>
     return isFrontOrBackFn(cid) ? mod.width : mod.depth;
   })();
 
-const computeAttachedOffset = (parentModule, childModule, attachSide) => {
+const computeAttachedOffset = (parentModule, childModule, attachSide, attachOffset = 0) => {
   const { offsetX: pX, offsetZ: pZ, width: pW, depth: pD } = parentModule;
   const { width: cW, depth: cD } = childModule;
   switch (attachSide) {
     case "right":
-      return { offsetX: pX + pW / 2 + cW / 2, offsetZ: pZ };
+      return { offsetX: pX + pW / 2 + cW / 2, offsetZ: pZ + (attachOffset ?? 0) };
     case "left":
-      return { offsetX: pX - pW / 2 - cW / 2, offsetZ: pZ };
+      return { offsetX: pX - pW / 2 - cW / 2, offsetZ: pZ + (attachOffset ?? 0) };
     case "front":
-      return { offsetX: pX, offsetZ: pZ - pD / 2 - cD / 2 };
+      return { offsetX: pX + (attachOffset ?? 0), offsetZ: pZ - pD / 2 - cD / 2 };
     case "back":
-      return { offsetX: pX, offsetZ: pZ + pD / 2 + cD / 2 };
+      return { offsetX: pX + (attachOffset ?? 0), offsetZ: pZ + pD / 2 + cD / 2 };
     default:
       return { offsetX: childModule.offsetX ?? 0, offsetZ: childModule.offsetZ ?? 0 };
   }
+};
+
+/** Snaps attachOffset to one of three valid positions: center, start-aligned, end-aligned. */
+export const snapAttachOffset = (parentModule, childModule, attachSide, rawOffset) => {
+  const parentSpan = (attachSide === "left" || attachSide === "right")
+    ? (parentModule.depth ?? 0)
+    : (parentModule.width ?? 0);
+  const childSpan = (attachSide === "left" || attachSide === "right")
+    ? (childModule.depth ?? 0)
+    : (childModule.width ?? 0);
+  const raw = Number(rawOffset);
+  if (!Number.isFinite(raw) || parentSpan <= 0 || childSpan <= 0) return 0;
+  const halfDiff = (parentSpan - childSpan) / 2;
+  const endAligned = childSpan <= parentSpan ? halfDiff : 0;
+  const startAligned = childSpan <= parentSpan ? -halfDiff : 0;
+  const positions = [0, endAligned, startAligned];
+  let nearest = 0;
+  let bestDist = Infinity;
+  for (const p of positions) {
+    const d = Math.abs(raw - p);
+    if (d < bestDist) {
+      bestDist = d;
+      nearest = p;
+    }
+  }
+  return nearest;
 };
 
 const reflowAttachedModules = (modules) => {
@@ -41,8 +68,9 @@ const reflowAttachedModules = (modules) => {
     if (!m.attachedTo || !m.attachSide) continue;
     const parent = byId[m.attachedTo];
     if (!parent) continue;
-    const { offsetX, offsetZ } = computeAttachedOffset(parent, byId[m.id], m.attachSide);
-    byId[m.id] = { ...byId[m.id], offsetX, offsetZ };
+    const attachOffset = snapAttachOffset(parent, byId[m.id], m.attachSide, m.attachOffset ?? 0);
+    const { offsetX, offsetZ } = computeAttachedOffset(parent, byId[m.id], m.attachSide, attachOffset);
+    byId[m.id] = { ...byId[m.id], offsetX, offsetZ, attachOffset };
   }
   return Object.values(byId);
 };
@@ -60,9 +88,10 @@ const getWallCutSpans = (modules) => {
     const pD = parent.depth;
     const cW = child.width;
     const cD = child.depth;
+    const attachOffset = child.attachOffset ?? 0;
     if (side === "right" || side === "left") {
       const overlapHalf = Math.min(pD, cD) / 2;
-      const cut = { axis: "z", cutStart: -overlapHalf, cutEnd: overlapHalf };
+      const cut = { axis: "z", cutStart: attachOffset - overlapHalf, cutEnd: attachOffset + overlapHalf };
       if (side === "right") {
         spans.set(`${parent.id}_right`, cut);
         spans.set(`${child.id}_left`, cut);
@@ -72,7 +101,7 @@ const getWallCutSpans = (modules) => {
       }
     } else if (side === "front" || side === "back") {
       const overlapHalf = Math.min(pW, cW) / 2;
-      const cut = { axis: "x", cutStart: -overlapHalf, cutEnd: overlapHalf };
+      const cut = { axis: "x", cutStart: attachOffset - overlapHalf, cutEnd: attachOffset + overlapHalf };
       if (side === "front") {
         spans.set(`${parent.id}_front`, cut);
         spans.set(`${child.id}_back`, cut);
@@ -103,8 +132,11 @@ const computeVisibleWallSegments = (wallId, wallHalfSpan, wallIncluded, wallCutS
   return segments;
 };
 
+export const VIEW_MODES = { CLIENT: "client", CONSTRUCTION: "construction" };
+
 export const ConfiguratorProvider = ({ children }) => {
   const [step, setStep] = useState(1);
+  const [viewMode, setViewMode] = useState(VIEW_MODES.CLIENT);
   const [wallHeightType, setWallHeightType] = useState("standard");
   // Wall inclusion per scoped wallId (A_front, A_left, B_front, etc.)
   const [wallIncluded, setWallIncluded] = useState(() => ({
@@ -151,7 +183,7 @@ export const ConfiguratorProvider = ({ children }) => {
     wallHeight: shedData.wall_heights["standard"],
   }));
 
-  // Multi-module shed: each module has id, width, depth (inches), offsetX, offsetZ
+  // Multi-module shed: start with default module A for immediate build flow
   const [modules, setModules] = useState(() => [
     { id: "A", width: defaultWidthInches, depth: defaultDepthInches, offsetX: 0, offsetZ: 0 },
   ]);
@@ -344,10 +376,14 @@ export const ConfiguratorProvider = ({ children }) => {
     return (wallId, windowTypeKey) => {
       const cid = wallIdToCanonical(wallId);
       const wallWidth = getWallWidthForWallId(modules, cid, isFrontOrBack);
-      const w = getWindowDimensions(windowTypeKey).width;
-      return openingFitsWall(wallWidth, w, { edgeClearance: true });
+      const wallHeight = typeof shedConfig.wallHeight === "number" && Number.isFinite(shedConfig.wallHeight) ? shedConfig.wallHeight : 66;
+      const dims = getWindowDimensions(windowTypeKey);
+      const fitsWidth = openingFitsWall(wallWidth, dims.width, { edgeClearance: true });
+      const minWallHeightForWindow = dims.height + 14;
+      const fitsHeight = wallHeight >= minWallHeightForWindow;
+      return fitsWidth && fitsHeight;
     };
-  }, [modules, wallIdToCanonical]);
+  }, [modules, wallIdToCanonical, shedConfig.wallHeight]);
 
   const removeWindow = (wallId, index) => {
     const cid = wallIdToCanonical(wallId);
@@ -394,6 +430,8 @@ export const ConfiguratorProvider = ({ children }) => {
     updateModuleDimensions(activeModuleId, { width: widthInches, depth: depthInches });
   };
 
+  const createFirstModule = () => { /* No-op: module A exists from start */ };
+
   // Custom setter for wallHeightType that also updates shedConfig
   const updateWallHeightType = (newWallHeightType) => {
     setWallHeightType(newWallHeightType);
@@ -403,9 +441,9 @@ export const ConfiguratorProvider = ({ children }) => {
     }));
   };
 
-  const doorTypeOrder = ["double_with_windows", "double", "stable", "single"];
+  const doorTypeOrder = ["double", "stable", "single"];
   /** Window type fallback order: largest to smallest. On resize, invalid types downgrade to the largest that fits. */
-  const windowTypeFallbackOrder = ["DOUBLE", "STANDARD", "SECURITY"];
+  const windowTypeFallbackOrder = ["DOUBLE", "DOUBLE_VERTICAL", "STANDARD", "SECURITY"];
   useEffect(() => {
     const wallHeight = typeof shedConfig.wallHeight === "number" && Number.isFinite(shedConfig.wallHeight) ? shedConfig.wallHeight : 66;
     const wallIds = modules.flatMap((m) => [`${m.id}_front`, `${m.id}_back`, `${m.id}_left`, `${m.id}_right`]);
@@ -415,7 +453,12 @@ export const ConfiguratorProvider = ({ children }) => {
       const wallWidth = getWallWidthForWallId(modules, cid, isFrontOrBack);
       const door = doorsByWallRaw[cid];
       if (door && door.type !== "none") {
-        const w = getDoorDimensions({ doorType: door.type, wallHeightType: wallHeightType || "standard", wallHeight }).width;
+        const doorType = door.type === "double_with_windows" ? "double" : door.type;
+        if (door.type === "double_with_windows") {
+          nextDoors[cid] = { ...door, type: "double" };
+          needsDoorCorrection = true;
+        }
+        const w = getDoorDimensions({ doorType, wallHeightType: wallHeightType || "standard", wallHeight }).width;
         if (!openingFitsWall(wallWidth, w, { edgeClearance: false })) {
           const firstFitting = doorTypeOrder.find((key) => {
             const dw = getDoorDimensions({ doorType: key, wallHeightType: wallHeightType || "standard", wallHeight }).width;
@@ -436,12 +479,15 @@ export const ConfiguratorProvider = ({ children }) => {
       const wallWidth = getWallWidthForWallId(modules, cid, isFrontOrBack);
       const types = windowTypesRaw[cid] || [];
       nextTypes[cid] = types.map((t) => {
-        const fits = openingFitsWall(wallWidth, getWindowDimensions(t).width, { edgeClearance: true });
-        if (fits) return t;
+        const dims = getWindowDimensions(t);
+        const fitsWidth = openingFitsWall(wallWidth, dims.width, { edgeClearance: true });
+        const fitsHeight = dims.height + 14 <= wallHeight;
+        if (fitsWidth && fitsHeight) return t;
         needsTypeCorrection = true;
-        const fallback = windowTypeFallbackOrder.find((type) =>
-          openingFitsWall(wallWidth, getWindowDimensions(type).width, { edgeClearance: true })
-        );
+        const fallback = windowTypeFallbackOrder.find((type) => {
+          const d = getWindowDimensions(type);
+          return openingFitsWall(wallWidth, d.width, { edgeClearance: true }) && d.height + 14 <= wallHeight;
+        });
         return fallback || "STANDARD";
       });
     }
@@ -522,13 +568,14 @@ export const ConfiguratorProvider = ({ children }) => {
     }));
   };
 
-  const addModule = (targetModuleId, side) => {
+  const addModule = (targetModuleId, side, attachOffsetRaw) => {
     const target = modules.find((m) => m.id === targetModuleId);
     if (!target) return;
     const w = target.width;
     const d = target.depth;
     const childStub = { width: w, depth: d, offsetX: 0, offsetZ: 0 };
-    const { offsetX, offsetZ } = computeAttachedOffset(target, childStub, side);
+    const attachOffset = snapAttachOffset(target, childStub, side, attachOffsetRaw ?? 0);
+    const { offsetX, offsetZ } = computeAttachedOffset(target, childStub, side, attachOffset);
     const nextId = String.fromCharCode(65 + modules.length);
     const newModule = {
       id: nextId,
@@ -538,6 +585,7 @@ export const ConfiguratorProvider = ({ children }) => {
       offsetZ,
       attachedTo: targetModuleId,
       attachSide: side,
+      attachOffset,
     };
     setModules((prev) => [...prev, newModule]);
     setWindowPositionsRaw((prev) => ({
@@ -673,11 +721,42 @@ export const ConfiguratorProvider = ({ children }) => {
     [wallIncluded, wallCutSpans, wallJoinOverrideByWallId]
   );
 
+  // Build model for export/schedules: pure derivation from state, no mesh dependency
+  const buildModel = useCallback(
+    () =>
+      getBuildModel({
+        modules,
+        roofByModule,
+        wallIncluded,
+        wallJoinOverrideByWallId,
+        windowPositionsRaw,
+        windowTypesRaw,
+        doorsByWallRaw,
+        shedConfig: shedConfigWithDims,
+        wallHeightType,
+      }),
+    [
+      modules,
+      roofByModule,
+      wallIncluded,
+      wallJoinOverrideByWallId,
+      windowPositionsRaw,
+      windowTypesRaw,
+      doorsByWallRaw,
+      shedConfigWithDims,
+      wallHeightType,
+    ]
+  );
+
+  const buildSchedules = useCallback(() => getBuildSchedules(buildModel()), [buildModel]);
+
   return (
     <ConfiguratorContext.Provider
       value={{
         step,
         setStep,
+        viewMode,
+        setViewMode,
         size,
         setSize,
         wallHeightType,
@@ -716,7 +795,11 @@ export const ConfiguratorProvider = ({ children }) => {
         setModules,
         addModule,
         removeModule,
+        createFirstModule,
         updateModuleDimensions,
+        snapAttachOffset,
+        buildModel,
+        buildSchedules,
       }}
     >
       {children}

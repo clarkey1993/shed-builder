@@ -12,7 +12,7 @@ export default function Summary() {
       ? shedData.apex_roof_dims[size.width]
       : shedData.pent_roof_dims[size.width]?.front;
 
-  const handleArClick = () => console.log("Preparing AR model...");
+  const handleArClick = () => {};
 
   return (
     <div className="space-y-4">

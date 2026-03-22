@@ -1,11 +1,14 @@
 import { Box, Line } from "@react-three/drei";
 import { useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import * as THREE from "three";
 import { useConfigurator } from "../../../context/ConfiguratorContext";
 import { useBuilder } from "../../../context/BuilderContext";
 import { useShedTexturesContext } from "../../../context/ShedTextureContext";
 import { getWindowDimensions, getDoorDimensions } from "../../../systems/openings/getOpeningDimensions";
 import { getWallHeight, getWallMinHeight, getWallYCenter, getWallHeightAtX } from "../../../systems/roof/getWallProfiles";
+import { framingZOffset as getFramingZOffset } from "../../../config/wallDepth";
+import { FRAMING_COLOR } from "../../../config/framingConstants";
 import DoorFrame from "../doors/DoorFrame";
 import DraggableDoor from "../doors/DraggableDoor";
 import Window from "../windows/Window";
@@ -64,7 +67,7 @@ const Wall = ({
 }) => {
   const wallGroupRef = useRef();
   const dragPlaneRef = useRef();
-  const { shedConfig, setWindowPosition, windowTypes = {}, wallHeightType, roofStyle, addWindowAt, placeDoorAt, removeWindow, modules, activeModuleId } = useConfigurator();
+  const { shedConfig, setWindowPosition, windowTypes = {}, wallHeightType, roofStyle, addWindowAt, placeDoorAt, removeWindow, modules, activeModuleId, snapAttachOffset } = useConfigurator();
   const owningModuleId = moduleIdProp ?? (typeof wallId === "string" && wallId.includes("_") ? wallId.split("_")[0] : modules?.[0]?.id ?? "A");
   const { selectedElementId, showFraming, debugShowDragPlanes, placementTool, setPlacementTool, placementDrag, setPlacementDrag } = useBuilder();
   const [isPlacementHover, setIsPlacementHover] = useState(false);
@@ -136,7 +139,7 @@ const Wall = ({
       })
     : null;
   const doorHalfWidth = doorDims ? doorDims.width / 2 : 0;
-  const framingZOffset = -exteriorZSign * (plateThickness / 2 + 0.75);
+  const framingZOffset = getFramingZOffset(exteriorZSign);
   const trimMat = <meshStandardMaterial color={WARM_CEDAR} roughness={0.75} metalness={0.02} />;
 
   const showWallGrid = selectedElementId !== null && selectedElementId.startsWith(`window-${wallId}-`);
@@ -188,16 +191,18 @@ const Wall = ({
   const modW = mod?.width ?? 96;
   const modD = mod?.depth ?? 72;
   const side = typeof wallId === "string" && wallId.includes("_") ? wallId.split("_")[1] : null;
+  const hitOffset = (placementDrag?.lastHit?.wallId === wallId) ? (placementDrag.lastHit.attachOffset ?? placementDrag.lastHit.x ?? 0) : 0;
   const ghostPosition = useMemo(() => {
     if (!side) return [0, 0, 0];
+    const off = Number.isFinite(Number(hitOffset)) ? Number(hitOffset) : 0;
     switch (side) {
-      case "right": return [modW / 2 + ghostW / 2, 0, 0];
-      case "left": return [-modW / 2 - ghostW / 2, 0, 0];
-      case "front": return [0, 0, -modD / 2 - ghostD / 2];
-      case "back": return [0, 0, modD / 2 + ghostD / 2];
+      case "right": return [modW / 2 + ghostW / 2, 0, off];
+      case "left": return [-modW / 2 - ghostW / 2, 0, off];
+      case "front": return [off, 0, -modD / 2 - ghostD / 2];
+      case "back": return [off, 0, modD / 2 + ghostD / 2];
       default: return [0, 0, 0];
     }
-  }, [side, modW, modD, ghostW, ghostD]);
+  }, [side, modW, modD, ghostW, ghostD, hitOffset]);
 
   const showModuleGhost = placementTool?.kind === "module" && isPlacementHover && side;
 
@@ -237,10 +242,30 @@ const Wall = ({
           if (!wallGroupRef.current) return;
           const pt = e.point.clone();
           wallGroupRef.current.worldToLocal(pt);
-          setPlacementDrag((prev) => {
-            if (!prev) return prev;
-            return { ...prev, lastHit: { wallId, x: pt.x } };
-          });
+          const wallSide = (typeof wallId === "string" && wallId.includes("_") ? wallId.split("_")[1] : null) ?? "";
+          const ptX = Number.isFinite(Number(pt.x)) ? pt.x : 0;
+          let rawAttachOffset = 0;
+          if (wallSide === "front" || wallSide === "left") rawAttachOffset = ptX;
+          else if (wallSide === "back" || wallSide === "right") rawAttachOffset = -ptX;
+          const parentMod = mod ?? { width: modW, depth: modD };
+          const childStub = { width: ghostW, depth: ghostD };
+          const attachOffset = snapAttachOffset
+            ? snapAttachOffset(parentMod, childStub, wallSide, rawAttachOffset)
+            : rawAttachOffset;
+          const lastHit = {
+            wallId,
+            attachedTo: owningModuleId,
+            attachSide: wallSide,
+            attachOffset,
+            x: pt.x,
+          };
+          if (placementTool.kind === "module") {
+            flushSync(() => {
+              setPlacementDrag((prev) => (prev ? { ...prev, lastHit } : prev));
+            });
+          } else {
+            setPlacementDrag((prev) => (prev ? { ...prev, lastHit } : prev));
+          }
         }}
       >
         {wallGeometry ? (
@@ -271,7 +296,7 @@ const Wall = ({
           {isTrapezoidal ? (
             <>
               <Box args={[width, plateThickness, plateThickness]} position={[0, -yCenter + plateThickness / 2, 0]} castShadow>
-                {woodFraming ? <meshStandardMaterial map={woodFraming} roughness={0.8} metalness={0.02} color="#5c4033" /> : <meshStandardMaterial color="#5c4033" roughness={0.8} />}
+                {woodFraming ? <meshStandardMaterial map={woodFraming} roughness={0.8} metalness={0.02} color={FRAMING_COLOR} /> : <meshStandardMaterial color={FRAMING_COLOR} roughness={0.8} />}
               </Box>
               <Box
                 args={[width, plateThickness, plateThickness]}
@@ -279,30 +304,51 @@ const Wall = ({
                 rotation={[Math.atan((hEnd - hStart) / width), 0, 0]}
                 castShadow
               >
-                {woodFraming ? <meshStandardMaterial map={woodFraming} roughness={0.8} metalness={0.02} color="#5c4033" /> : <meshStandardMaterial color="#5c4033" roughness={0.8} />}
+                {woodFraming ? <meshStandardMaterial map={woodFraming} roughness={0.8} metalness={0.02} color={FRAMING_COLOR} /> : <meshStandardMaterial color={FRAMING_COLOR} roughness={0.8} />}
               </Box>
             </>
           ) : isGable ? (
             <>
               <Box args={[width, plateThickness, plateThickness]} position={[0, -yCenter + plateThickness / 2, 0]} castShadow>
-                {woodFraming ? <meshStandardMaterial map={woodFraming} roughness={0.8} metalness={0.02} color="#5c4033" /> : <meshStandardMaterial color="#5c4033" roughness={0.8} />}
+                {woodFraming ? <meshStandardMaterial map={woodFraming} roughness={0.8} metalness={0.02} color={FRAMING_COLOR} /> : <meshStandardMaterial color={FRAMING_COLOR} roughness={0.8} />}
               </Box>
-              <Box
-                args={[width, plateThickness, plateThickness]}
-                position={[0, (eaveHeight + peakHeight) / 2 - yCenter - plateThickness / 2, 0]}
-                rotation={[Math.atan2(peakHeight - eaveHeight, width / 2), 0, 0]}
-                castShadow
-              >
-                {woodFraming ? <meshStandardMaterial map={woodFraming} roughness={0.8} metalness={0.02} color="#5c4033" /> : <meshStandardMaterial color="#5c4033" roughness={0.8} />}
-              </Box>
+              {/* Two sloping top members meeting at apex — diagonal length so both terminate at peak */}
+              {(() => {
+                const halfW = width / 2;
+                const rise = peakHeight - eaveHeight;
+                const slopeAngle = Math.atan2(rise, halfW);
+                const topPlateCenterY = (eaveHeight + peakHeight) / 2 - yCenter - plateThickness;
+                const halfDiag = Math.sqrt(halfW * halfW + rise * rise);
+                const framingMat = woodFraming ? <meshStandardMaterial map={woodFraming} roughness={0.8} metalness={0.02} color={FRAMING_COLOR} /> : <meshStandardMaterial color={FRAMING_COLOR} roughness={0.8} />;
+                return (
+                  <>
+                    <Box
+                      args={[halfDiag, plateThickness, plateThickness]}
+                      position={[-halfW / 2, topPlateCenterY, 0]}
+                      rotation={[0, 0, slopeAngle]}
+                      castShadow
+                    >
+                      {framingMat}
+                    </Box>
+                    <Box
+                      args={[halfDiag, plateThickness, plateThickness]}
+                      position={[halfW / 2, topPlateCenterY, 0]}
+                      rotation={[0, 0, -slopeAngle]}
+                      castShadow
+                    >
+                      {framingMat}
+                    </Box>
+                  </>
+                );
+              })()}
             </>
           ) : (
             <>
               <Box args={[width, plateThickness, plateThickness]} position={[0, height / 2 - plateThickness / 2, 0]} castShadow>
-                {woodFraming ? <meshStandardMaterial map={woodFraming} roughness={0.8} metalness={0.02} color="#5c4033" /> : <meshStandardMaterial color="#5c4033" roughness={0.8} />}
+                {woodFraming ? <meshStandardMaterial map={woodFraming} roughness={0.8} metalness={0.02} color={FRAMING_COLOR} /> : <meshStandardMaterial color={FRAMING_COLOR} roughness={0.8} />}
               </Box>
               <Box args={[width, plateThickness, plateThickness]} position={[0, -height / 2 + plateThickness / 2, 0]} castShadow>
-                {woodFraming ? <meshStandardMaterial map={woodFraming} roughness={0.8} metalness={0.02} color="#5c4033" /> : <meshStandardMaterial color="#5c4033" roughness={0.8} />}
+                {woodFraming ? <meshStandardMaterial map={woodFraming} roughness={0.8} metalness={0.02} color={FRAMING_COLOR} /> : <meshStandardMaterial color={FRAMING_COLOR} roughness={0.8} />}
               </Box>
             </>
           )}

@@ -17,6 +17,8 @@ const DOOR_BOARD_THICKNESS = 0.65;
 const DOOR_PANEL_Z = 0.35;
 const LIGHT_CEDAR = "#e0b890"; // Warm timber, matches wall cladding
 const COLOR_VARIATION = 0.05;
+/** Center gap between double-door leaves for visible split (inches). */
+const DOUBLE_LEAF_CENTER_GAP = 1.5;
 // Double-with-windows: glazed section per leaf (upper part)
 const GLAZE_TOP_INSET = 2;
 const GLAZE_HEIGHT = 22;
@@ -80,7 +82,9 @@ const DoorFrame = ({ doorType, wallHeight, doorWidth: doorWidthProp, doorHeight:
     return positions;
   }, [doorWidth]);
 
+  const isDouble = doorType === "double";
   const isDoubleWithWindows = doorType === "double_with_windows";
+  const isTwoLeafDoor = isDouble || isDoubleWithWindows;
   const leafWidth = doorWidth / 2;
   const glazeCenterY = doorCenterY + doorHeight / 2 - GLAZE_TOP_INSET - GLAZE_HEIGHT / 2;
   const glazeOuterW = leafWidth - GLAZE_SIDE_INSET * 2;
@@ -90,7 +94,7 @@ const DoorFrame = ({ doorType, wallHeight, doorWidth: doorWidthProp, doorHeight:
   const glazeZ = panelZ + 0.04 * exteriorZSign;
 
   const leftLeafBoardPositions = useMemo(() => {
-    if (!isDoubleWithWindows) return [];
+    if (!isTwoLeafDoor) return [];
     const numBoards = Math.max(1, Math.ceil(leafWidth / DOOR_BOARD_WIDTH));
     const positions = [];
     for (let i = 0; i < numBoards; i++) {
@@ -98,19 +102,46 @@ const DoorFrame = ({ doorType, wallHeight, doorWidth: doorWidthProp, doorHeight:
       positions.push(x);
     }
     return positions;
-  }, [isDoubleWithWindows, leafWidth]);
+  }, [isTwoLeafDoor, leafWidth]);
+
+  const leftLeafCenterX = -doorWidth / 4 - DOUBLE_LEAF_CENTER_GAP / 2;
+  const rightLeafCenterX = doorWidth / 4 + DOUBLE_LEAF_CENTER_GAP / 2;
 
   return (
     <group>
-      {/* Door panel(s): single slab for single/stable/double; two leaves + glazing for double_with_windows */}
-      {isDoubleWithWindows ? (
+      {/* Door panel(s): single slab for single/stable; two leaves for double; two leaves + glazing for double_with_windows */}
+      {isDouble ? (
+        <>
+          {/* Double door: two leaves, hinges on outer edges, center gap */}
+          {leftLeafBoardPositions.map((lx, i) => (
+            <Box
+              key={`left-${i}`}
+              args={[DOOR_BOARD_WIDTH, doorHeight, DOOR_BOARD_THICKNESS]}
+              position={[leftLeafCenterX + lx, doorCenterY, panelZ]}
+              castShadow
+            >
+              {doorBoardMats[i % doorBoardMats.length]}
+            </Box>
+          ))}
+          {leftLeafBoardPositions.map((lx, i) => (
+            <Box
+              key={`right-${i}`}
+              args={[DOOR_BOARD_WIDTH, doorHeight, DOOR_BOARD_THICKNESS]}
+              position={[rightLeafCenterX + lx, doorCenterY, panelZ]}
+              castShadow
+            >
+              {doorBoardMats[(i + 2) % doorBoardMats.length]}
+            </Box>
+          ))}
+        </>
+      ) : isDoubleWithWindows ? (
         <>
           {/* Left leaf - boards */}
           {leftLeafBoardPositions.map((lx, i) => (
             <Box
               key={`left-${i}`}
               args={[DOOR_BOARD_WIDTH, doorHeight, DOOR_BOARD_THICKNESS]}
-              position={[-doorWidth / 4 + lx, doorCenterY, panelZ]}
+              position={[leftLeafCenterX + lx, doorCenterY, panelZ]}
               castShadow
             >
               {doorBoardMats[i % doorBoardMats.length]}
@@ -121,14 +152,14 @@ const DoorFrame = ({ doorType, wallHeight, doorWidth: doorWidthProp, doorHeight:
             <Box
               key={`right-${i}`}
               args={[DOOR_BOARD_WIDTH, doorHeight, DOOR_BOARD_THICKNESS]}
-              position={[doorWidth / 4 + lx, doorCenterY, panelZ]}
+              position={[rightLeafCenterX + lx, doorCenterY, panelZ]}
               castShadow
             >
               {doorBoardMats[(i + 2) % doorBoardMats.length]}
             </Box>
           ))}
           {/* Left leaf - upper glazed section (frame + glass) */}
-          <group position={[-doorWidth / 4, glazeCenterY, glazeZ]}>
+          <group position={[leftLeafCenterX, glazeCenterY, glazeZ]}>
             <Box args={[glazeOuterW + GLAZE_FRAME_STILE * 2, GLAZE_HEIGHT + GLAZE_FRAME_RAIL * 2, DOOR_BOARD_THICKNESS]} position={[0, 0, 0]} castShadow>
               {framingMat}
             </Box>
@@ -137,7 +168,7 @@ const DoorFrame = ({ doorType, wallHeight, doorWidth: doorWidthProp, doorHeight:
             </Box>
           </group>
           {/* Right leaf - upper glazed section (frame + glass) */}
-          <group position={[doorWidth / 4, glazeCenterY, glazeZ]}>
+          <group position={[rightLeafCenterX, glazeCenterY, glazeZ]}>
             <Box args={[glazeOuterW + GLAZE_FRAME_STILE * 2, GLAZE_HEIGHT + GLAZE_FRAME_RAIL * 2, DOOR_BOARD_THICKNESS]} position={[0, 0, 0]} castShadow>
               {framingMat}
             </Box>
@@ -203,7 +234,7 @@ const DoorFrame = ({ doorType, wallHeight, doorWidth: doorWidthProp, doorHeight:
           <Box args={[4, 1.5, 0.3]} position={[2, -h / 2, 0]} castShadow>{metalMat}</Box>
         </group>
       ))}
-      {isDoubleWithWindows && [
+      {isTwoLeafDoor && [
         { y: doorTop - 4, h: 8 },
         { y: doorCenterY, h: 10 },
         { y: doorBottom + 4, h: 8 },

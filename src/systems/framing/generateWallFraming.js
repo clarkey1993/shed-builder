@@ -1,10 +1,10 @@
 /**
- * Automatic wall framing generation.
+ * Automatic wall framing generation for shed constructor view.
+ * Simplified framing: studs at 24" centres, no noggins, top follows gable/trapezoid profile.
  * Supports rectangular (wallHeight), trapezoid (heightAtStart, heightAtEnd, yCenter), or gable (eaveHeight, peakHeight, yCenter).
  */
 
 const STUD_SPACING = 24;
-const NOGGIN_SPACING = 36;
 const FRAMING_MARGIN = 3;
 
 function heightAtXTrapezoid(heightAtStart, heightAtEnd, width, x) {
@@ -19,6 +19,8 @@ function heightAtXGable(eaveHeight, peakHeight, width, x) {
 
 /**
  * Generate wall framing layout.
+ * Side walls: uprights every 24", no noggins.
+ * Apex walls: uprights only, top framing follows gable shape.
  * @param {Object} params
  * @param {number} params.wallWidth - Wall width in inches
  * @param {number} params.wallHeight - Wall height in inches (used for rectangular or as fallback)
@@ -50,7 +52,6 @@ export function generateWallFraming({
   const heightAtX = (x) => isGable ? heightAtXGable(eaveHeight, peakHeight, wallWidth, x) : heightAtXTrapezoid(heightAtStart, heightAtEnd, wallWidth, x);
 
   const studPositions = [];
-  const nogginPositions = [];
   const headerPositions = [];
 
   const openings = [
@@ -72,19 +73,29 @@ export function generateWallFraming({
   ];
 
   const isInOpening = (x) => openings.some((o) => x >= o.xMin && x <= o.xMax);
-  const isInOpeningAtY = (x, y) => openings.some((o) => x >= o.xMin && x <= o.xMax && y >= o.yMin && y <= o.yMax);
 
-  const numStuds = Math.floor(wallWidth / studSpacing) + 1;
-  const actualSpacing = wallWidth / (numStuds - 1) || studSpacing;
-
-  for (let i = 0; i < numStuds; i++) {
-    const studX = -halfW + i * actualSpacing;
+  // Studs at 24" on-centre from left edge (practical shed framing)
+  const studXs = [];
+  for (let i = 0; ; i++) {
+    const x = -halfW + i * studSpacing;
+    if (x > halfW + 0.5) break;
+    studXs.push(i === 0 ? -halfW : Math.min(x, halfW));
+  }
+  if (studXs.length > 0 && studXs[studXs.length - 1] < halfW - 0.5) {
+    studXs.push(halfW);
+  }
+  const seen = new Set();
+  for (const studX of studXs) {
+    const key = Math.round(studX * 10) / 10;
+    if (seen.has(key)) continue;
+    seen.add(key);
     if (isInOpening(studX)) continue;
-    const type = i === 0 || i === numStuds - 1 ? "corner" : "regular";
+    const type = Math.abs(studX + halfW) < 0.5 || Math.abs(studX - halfW) < 0.5 ? "corner" : "regular";
     if (isTrapezoid || isGable) {
       const h = heightAtX(studX);
       const studH = h - plateThickness * 2;
-      studPositions.push({ x: studX, type, studHeight: studH });
+      const studCenterY = (h - 2 * yCenter) / 2;
+      studPositions.push({ x: studX, type, studHeight: studH, studCenterY });
     } else {
       studPositions.push({ x: studX, type });
     }
@@ -95,40 +106,21 @@ export function generateWallFraming({
     const kingRight = o.xMax;
     if (!studPositions.some((s) => Math.abs(s.x - kingLeft) < 0.5)) {
       const sh = (isTrapezoid || isGable) ? heightAtX(kingLeft) - plateThickness * 2 : studHeightRect;
-      studPositions.push((isTrapezoid || isGable) ? { x: kingLeft, type: "king", studHeight: sh } : { x: kingLeft, type: "king" });
+      const studCenterY = (isTrapezoid || isGable) ? (heightAtX(kingLeft) - 2 * yCenter) / 2 : undefined;
+      studPositions.push((isTrapezoid || isGable) ? { x: kingLeft, type: "king", studHeight: sh, studCenterY } : { x: kingLeft, type: "king" });
     }
     if (!studPositions.some((s) => Math.abs(s.x - kingRight) < 0.5)) {
       const sh = (isTrapezoid || isGable) ? heightAtX(kingRight) - plateThickness * 2 : studHeightRect;
-      studPositions.push((isTrapezoid || isGable) ? { x: kingRight, type: "king", studHeight: sh } : { x: kingRight, type: "king" });
+      const studCenterY = (isTrapezoid || isGable) ? (heightAtX(kingRight) - 2 * yCenter) / 2 : undefined;
+      studPositions.push((isTrapezoid || isGable) ? { x: kingRight, type: "king", studHeight: sh, studCenterY } : { x: kingRight, type: "king" });
     }
   });
 
   studPositions.sort((a, b) => a.x - b.x);
 
-  const yMin = (isTrapezoid || isGable) ? wallBottom + NOGGIN_SPACING : -studHeightRect / 2 + NOGGIN_SPACING;
-  const yMaxForNoggin = (x) => {
-    if (!isTrapezoid && !isGable) return studHeightRect / 2 - 2;
-    const topY = heightAtX(x) - yCenter - plateThickness;
-    return topY - 2;
-  };
-  const yMaxLoop = (isTrapezoid || isGable)
-    ? (isGable ? peakHeight - yCenter : Math.min(heightAtStart - yCenter, heightAtEnd - yCenter)) - plateThickness - 2
-    : studHeightRect / 2 - 2;
-  for (let y = yMin; y < yMaxLoop; y += NOGGIN_SPACING) {
-    for (let i = 0; i < studPositions.length - 1; i++) {
-      const leftX = studPositions[i].x;
-      const rightX = studPositions[i + 1].x;
-      const centerX = (leftX + rightX) / 2;
-      if (y >= yMaxForNoggin(centerX)) continue;
-      if (isInOpeningAtY(centerX, y)) continue;
-      nogginPositions.push({ x: centerX, y, width: rightX - leftX - 1.5 });
-    }
-  }
+  // No noggins — simplified shed framing (side walls and apex use uprights only)
+  // No window headers — avoid over-framed look; king studs provide support
 
-  windows.forEach((w) => {
-    const centerY = w.y ?? 0;
-    headerPositions.push({ x: w.x, y: centerY + w.height / 2 + 2, width: w.width + FRAMING_MARGIN * 2, height: 3.5 });
-  });
   doors.forEach((d) => {
     const headerY = wallBottom + d.height + 2;
     headerPositions.push({ x: d.x, y: headerY, width: d.width + FRAMING_MARGIN * 2, height: 3.5 });
@@ -139,7 +131,7 @@ export function generateWallFraming({
 
   return {
     studPositions,
-    nogginPositions,
+    nogginPositions: [],
     headerPositions,
     plateThickness,
     studHeight,

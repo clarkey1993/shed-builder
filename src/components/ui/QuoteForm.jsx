@@ -6,7 +6,6 @@ export default function QuoteForm({ onClose }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     const email = e.target.email.value;
-    console.log("Quote:", { email, size: `${size.width}x${size.depth}`, roofStyle, windows });
     onClose();
   };
 

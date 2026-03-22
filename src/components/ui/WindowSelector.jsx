@@ -6,6 +6,7 @@ const WINDOW_TYPE_OPTIONS = [
   { label: "Standard", type: "STANDARD" },
   { label: "Security", type: "SECURITY" },
   { label: "Double", type: "DOUBLE" },
+  { label: "Double Vertical", type: "DOUBLE_VERTICAL" },
 ];
 
 export default function WindowSelector() {

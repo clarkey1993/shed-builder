@@ -85,6 +85,20 @@ export default function CameraController() {
   });
 
   const targetY = wallHeight * 0.5;
+
+  // One-time: set initial camera to front-left view, farther back for full shed framing
+  const hasSetInitialPosition = useRef(false);
+  useEffect(() => {
+    if (hasSetInitialPosition.current) return;
+    hasSetInitialPosition.current = true;
+    const frontLeftOffset = Math.max(radius * 1.8, 10);
+    camera.position.set(
+      centerX + frontLeftOffset * 0.85,
+      wallHeight * 1.2,
+      centerZ - frontLeftOffset
+    );
+  }, [camera, centerX, centerZ, wallHeight, radius]);
+
   return (
     <OrbitControls
       ref={controlsRef}

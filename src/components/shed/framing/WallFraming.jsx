@@ -7,6 +7,7 @@ import * as THREE from "three";
 import { Box } from "@react-three/drei";
 import { useShedTexturesContext } from "../../../context/ShedTextureContext";
 import { generateWallFraming } from "../../../systems/framing/generateWallFraming";
+import { FRAMING_COLOR } from "../../../config/framingConstants";
 
 const WallFraming = ({ wallWidth, wallHeight, heightAtStart, heightAtEnd, eaveHeight, peakHeight, yCenter, windows, doors, framingConfig }) => {
   const studsRef = useRef();
@@ -37,8 +38,9 @@ const WallFraming = ({ wallWidth, wallHeight, heightAtStart, heightAtEnd, eaveHe
     const baseStudHeight = studHeight ?? 60;
     studPositions.forEach((s, i) => {
       const h = s.studHeight ?? baseStudHeight;
+      const studY = typeof s.studCenterY === "number" ? s.studCenterY : 0;
       m.compose(
-        new THREE.Vector3(s.x, 0, 0),
+        new THREE.Vector3(s.x, studY, 0),
         new THREE.Quaternion(),
         new THREE.Vector3(1, h / baseStudHeight, 1)
       );
@@ -47,11 +49,10 @@ const WallFraming = ({ wallWidth, wallHeight, heightAtStart, heightAtEnd, eaveHe
     mesh.instanceMatrix.needsUpdate = true;
   }, [studPositions, studHeight]);
 
-  const structuralColor = "#5c4033";
   const framingMat = woodFraming ? (
-    <meshStandardMaterial map={woodFraming} roughness={0.8} metalness={0.02} color={structuralColor} />
+    <meshStandardMaterial map={woodFraming} roughness={0.8} metalness={0.02} color={FRAMING_COLOR} />
   ) : (
-    <meshStandardMaterial color={structuralColor} roughness={0.8} metalness={0.02} />
+    <meshStandardMaterial color={FRAMING_COLOR} roughness={0.8} metalness={0.02} />
   );
 
   const baseStudHeight = studHeight ?? 60;

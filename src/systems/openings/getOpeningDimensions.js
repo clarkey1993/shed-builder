@@ -9,14 +9,17 @@ const WINDOW_RULES = {
   SECURITY: { width: 24, height: 12 },
   /** Two side-by-side panels with central mullion; combined nominal width 50" (24 + 2 + 24), height 24". */
   DOUBLE: { width: 50, height: 24 },
+  /** Two stacked panels with horizontal mullion; nominal width 24", height 50". */
+  DOUBLE_VERTICAL: { width: 24, height: 50 },
 };
 
 /**
- * @param {string} windowType - "STANDARD" | "SECURITY" | "DOUBLE"
+ * @param {string} windowType - "STANDARD" | "SECURITY" | "DOUBLE" | "DOUBLE_VERTICAL"
  * @returns {{ width: number, height: number }}
  */
 export function getWindowDimensions(windowType) {
-  return WINDOW_RULES[windowType] || WINDOW_RULES.STANDARD;
+  const base = WINDOW_RULES[windowType] || WINDOW_RULES.STANDARD;
+  return { ...base };
 }
 
 /**
@@ -32,7 +35,8 @@ export function getWindowDimensions(windowType) {
  * @returns {{ width: number, height: number }}
  */
 export function getDoorDimensions({ doorType, wallHeightType, wallHeight, topPlateThickness }) {
-  const width = shedData.door_widths[doorType]?.[wallHeightType] ?? shedData.door_widths.single?.standard ?? 31;
+  const effectiveType = doorType === "double_with_windows" ? "double" : doorType;
+  const width = shedData.door_widths[effectiveType]?.[wallHeightType] ?? shedData.door_widths.single?.standard ?? 31;
   const plate = typeof topPlateThickness === "number"
     ? topPlateThickness
     : shedData.framing.upright_middles_thickness_x;

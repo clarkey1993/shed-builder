@@ -15,6 +15,8 @@ const FINIAL_R = 2;
 const RAFTER_SPACING = 24;
 const RAFTER_W = 2;
 const RAFTER_T = 3;
+const Z_FIGHT_EPSILON = 0.15;
+const END_CLEARANCE = 0.15;
 
 const ApexRoof = ({ width, depth, opacity = 1, showFraming = false }) => {
   const { shedConfig } = useConfigurator();
@@ -171,39 +173,64 @@ const ApexRoof = ({ width, depth, opacity = 1, showFraming = false }) => {
         {fasciaMat}
       </Cone>
 
-      {showFraming && (
-        <>
-          {Array.from({ length: numRafters }).map((_, i) => (
-            <group
-              key={`L-${i}`}
-              position={[-halfSpan / 2, roofPeak / 2, i * RAFTER_SPACING]}
-            >
-              <Box
-                args={[rafterLen, RAFTER_W, RAFTER_T]}
-                rotation={[0, 0, -rafterAngle]}
-                castShadow
+      {showFraming && (() => {
+        const offset = thick / 2 + RAFTER_W / 2 + Z_FIGHT_EPSILON;
+        const leftInward = new THREE.Vector3(
+          Math.sin(rafterAngle),
+          -Math.cos(rafterAngle),
+          0
+        ).multiplyScalar(offset);
+        const rightInward = new THREE.Vector3(
+          -Math.sin(rafterAngle),
+          -Math.cos(rafterAngle),
+          0
+        ).multiplyScalar(offset);
+        const rafterLenTrimmed = rafterLen - END_CLEARANCE;
+        const shiftAlongSlope = END_CLEARANCE / 2;
+        const leftCenterShift = new THREE.Vector2(halfSpan / rafterLen, roofPeak / rafterLen).multiplyScalar(shiftAlongSlope);
+        const rightCenterShift = new THREE.Vector2(-halfSpan / rafterLen, roofPeak / rafterLen).multiplyScalar(shiftAlongSlope);
+        return (
+          <>
+            {Array.from({ length: numRafters }).map((_, i) => (
+              <group
+                key={`L-${i}`}
+                position={[
+                  -halfSpan / 2 + leftInward.x + leftCenterShift.x,
+                  roofPeak / 2 + leftInward.y + leftCenterShift.y,
+                  i * RAFTER_SPACING,
+                ]}
               >
-                {fasciaMat}
-              </Box>
-            </group>
-          ))}
+                <Box
+                  args={[rafterLenTrimmed, RAFTER_W, RAFTER_T]}
+                  rotation={[Math.PI, 0, -rafterAngle]}
+                  castShadow
+                >
+                  {fasciaMat}
+                </Box>
+              </group>
+            ))}
 
-          {Array.from({ length: numRafters }).map((_, i) => (
-            <group
-              key={`R-${i}`}
-              position={[halfSpan / 2, roofPeak / 2, i * RAFTER_SPACING]}
-            >
-              <Box
-                args={[rafterLen, RAFTER_W, RAFTER_T]}
-                rotation={[0, 0, rafterAngle]}
-                castShadow
+            {Array.from({ length: numRafters }).map((_, i) => (
+              <group
+                key={`R-${i}`}
+                position={[
+                  halfSpan / 2 + rightInward.x + rightCenterShift.x,
+                  roofPeak / 2 + rightInward.y + rightCenterShift.y,
+                  i * RAFTER_SPACING,
+                ]}
               >
-                {fasciaMat}
-              </Box>
-            </group>
-          ))}
-        </>
-      )}
+                <Box
+                  args={[rafterLenTrimmed, RAFTER_W, RAFTER_T]}
+                  rotation={[Math.PI, 0, rafterAngle]}
+                  castShadow
+                >
+                  {fasciaMat}
+                </Box>
+              </group>
+            ))}
+          </>
+        );
+      })()}
     </group>
   );
 };

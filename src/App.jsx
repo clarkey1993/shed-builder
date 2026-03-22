@@ -14,19 +14,19 @@ import DebugDimensionLabels from "./components/shed/DebugDimensionLabels";
 import { ShedTextureProvider } from "./context/ShedTextureContext";
 import DebugToggle from "./components/ui/DebugToggle";
 
-const CAMERA_POSITION = [6, 5, 6]; // Product 3/4 view, slightly above eye level
+const CAMERA_POSITION = [6, 5, -6]; // Front-left 3/4 view, slightly elevated, whole shed visible
 
 function App() {
   const [imageUrl, setImageUrl] = useState(null);
   const [showQuoteForm, setShowQuoteForm] = useState(false);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAFAFA]">
+    <div className="h-screen flex flex-col overflow-hidden bg-[#FAFAFA]">
       <header className="flex-shrink-0 h-14 px-6 flex items-center border-b border-gray-100 bg-white">
         <h1 className="text-lg font-semibold text-gray-900 tracking-tight">Shed Configurator</h1>
       </header>
 
-      <main className="flex-1 flex min-h-0">
+      <main className="flex-1 flex min-h-0 overflow-hidden">
         <Sidebar onImageUpload={setImageUrl} onGetQuote={() => setShowQuoteForm(true)} />
 
         <div className="flex-1 min-w-0 flex items-center justify-center p-6 lg:p-10">
@@ -38,7 +38,7 @@ function App() {
               camera={{ position: CAMERA_POSITION, fov: 42 }}
               className={`w-full h-full ${imageUrl ? "bg-transparent" : ""}`}
               style={{ background: imageUrl ? "transparent" : "#EBE8E0" }}
-              shadows
+              shadows="percentage"
             >
               <ShedTextureProvider>
                 <color attach="background" args={["#EBE8E0"]} />

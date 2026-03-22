@@ -9,11 +9,14 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
-html { font-family: var(--font-sans); }
+html { font-family: var(--font-sans); height: 100%; overflow: hidden; }
 body {
   -webkit-font-smoothing: antialiased;
   color: #1a1a1a;
   background: #FAFAFA;
+  height: 100%;
+  overflow: hidden;
+  margin: 0;
 }
 
 .btn-tab {

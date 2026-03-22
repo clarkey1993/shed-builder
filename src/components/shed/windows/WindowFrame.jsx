@@ -6,6 +6,8 @@ import { useMemo } from "react";
 import { Box } from "@react-three/drei";
 import * as THREE from "three";
 import { useShedTexturesContext } from "../../../context/ShedTextureContext";
+import { windowStructuralFramingZOffset } from "../../../config/wallDepth";
+import { FRAMING_COLOR } from "../../../config/framingConstants";
 
 // Structural framing (builder/debug only) - header, sill, jambs
 const STUD_THICKNESS = 2;
@@ -45,11 +47,10 @@ const WindowFrame = ({
   const emissive =
     isHovered || isSelected ? 0.08 : isSnappedToStud ? 0.12 : 0;
   const WARM_CEDAR = "#e0b890";
-  const STRUCTURAL_TIMBER = "#5c4033";
   const structuralFramingMat = woodFraming ? (
-    <meshStandardMaterial map={woodFraming} roughness={0.8} metalness={0.02} color={STRUCTURAL_TIMBER} emissive="#111" emissiveIntensity={emissive} />
+    <meshStandardMaterial map={woodFraming} roughness={0.8} metalness={0.02} color={FRAMING_COLOR} emissive="#111" emissiveIntensity={emissive} />
   ) : (
-    <meshStandardMaterial color={STRUCTURAL_TIMBER} roughness={0.8} metalness={0.02} emissive="#111" emissiveIntensity={emissive} />
+    <meshStandardMaterial color={FRAMING_COLOR} roughness={0.8} metalness={0.02} emissive="#111" emissiveIntensity={emissive} />
   );
   const trim = trimMat || <meshStandardMaterial color={WARM_CEDAR} roughness={0.72} metalness={0.02} />;
   const tw = EXTERIOR_TRIM_WIDTH;
@@ -68,10 +69,15 @@ const WindowFrame = ({
   const glazingZ = trimZ - tt * 0.6;
   const GLAZING_COLOR = "#f5f5f0";
 
-  // DOUBLE layout: glazing panels with gap each side of mullion (dimensions unchanged).
+  // DOUBLE (horizontal): two panels side by side with vertical mullion.
   const doubleGlazingWidth = (visualW - MULLION_WIDTH - 2 * MULLION_GLAZING_GAP) / 2;
   const doubleLeftCenterX = -(MULLION_WIDTH / 2 + MULLION_GLAZING_GAP + doubleGlazingWidth / 2);
   const doubleRightCenterX = MULLION_WIDTH / 2 + MULLION_GLAZING_GAP + doubleGlazingWidth / 2;
+
+  // DOUBLE_VERTICAL: two panels stacked with horizontal mullion.
+  const doubleVertGlazingHeight = (visualH - MULLION_WIDTH - 2 * MULLION_GLAZING_GAP) / 2;
+  const doubleVertTopCenterY = MULLION_WIDTH / 2 + MULLION_GLAZING_GAP + doubleVertGlazingHeight / 2;
+  const doubleVertBottomCenterY = -(MULLION_WIDTH / 2 + MULLION_GLAZING_GAP + doubleVertGlazingHeight / 2);
 
   const outlineLine = useMemo(() => {
     const m = 2;
@@ -88,12 +94,15 @@ const WindowFrame = ({
     return new THREE.Line(geom, mat);
   }, [openingW, openingH, exteriorZSign]);
 
+  // Structural framing aligned with wall framing depth; interior side only, never visible from exterior
+  const interiorZ = windowStructuralFramingZOffset(exteriorZSign);
+
   return (
     <group position={[positionX, positionY, 0]}>
       {(isHovered || isSelected) && <primitive object={outlineLine} />}
-      {/* Structural framing: builder/debug only; not shown in customer view */}
+      {/* Structural framing: interior side only — header, sill, jambs; never visible from exterior */}
       {showStructuralFraming && (
-        <>
+        <group position={[0, 0, interiorZ]}>
           <Box args={[windowWidth, STUD_WIDTH, STUD_THICKNESS]} position={[0, windowHeight / 2 - STUD_WIDTH / 2, 0]} castShadow>
             {structuralFramingMat}
           </Box>
@@ -106,9 +115,9 @@ const WindowFrame = ({
           <Box args={[STUD_WIDTH, windowHeight - STUD_WIDTH * 2, STUD_THICKNESS]} position={[windowWidth / 2 + STUD_WIDTH / 2, 0, 0]} castShadow>
             {structuralFramingMat}
           </Box>
-        </>
+        </group>
       )}
-      {/* Customer-facing glazing: single panel or double with central mullion */}
+      {/* Customer-facing glazing: single panel or double (horizontal/vertical) with central mullion */}
       {windowType === "DOUBLE" ? (
         <>
           <Box args={[doubleGlazingWidth, visualH, 0.08]} position={[doubleLeftCenterX, 0, glazingZ]} castShadow>
@@ -118,6 +127,18 @@ const WindowFrame = ({
             <meshStandardMaterial color={GLAZING_COLOR} roughness={0.4} metalness={0.02} />
           </Box>
           <Box args={[MULLION_WIDTH, visualH, tt]} position={[0, 0, glazingZ + tt / 2]} castShadow>
+            <meshStandardMaterial color="#8b7355" roughness={0.75} metalness={0.02} />
+          </Box>
+        </>
+      ) : windowType === "DOUBLE_VERTICAL" ? (
+        <>
+          <Box args={[visualW, doubleVertGlazingHeight, 0.08]} position={[0, doubleVertTopCenterY, glazingZ]} castShadow>
+            <meshStandardMaterial color={GLAZING_COLOR} roughness={0.4} metalness={0.02} />
+          </Box>
+          <Box args={[visualW, doubleVertGlazingHeight, 0.08]} position={[0, doubleVertBottomCenterY, glazingZ]} castShadow>
+            <meshStandardMaterial color={GLAZING_COLOR} roughness={0.4} metalness={0.02} />
+          </Box>
+          <Box args={[visualW, MULLION_WIDTH, tt]} position={[0, 0, glazingZ + tt / 2]} castShadow>
             <meshStandardMaterial color="#8b7355" roughness={0.75} metalness={0.02} />
           </Box>
         </>

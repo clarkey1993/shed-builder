@@ -8,6 +8,8 @@ const RAFTER_SPACING = 24;
 const RAFTER_W = 2;
 const RAFTER_T = 3;
 const ROOF_THICKNESS = 5;
+const Z_FIGHT_EPSILON = 0.15;
+const END_CLEARANCE = 0.15;
 
 /**
  * Build pent roof slab geometry from the four corner heights (profile-driven).
@@ -120,12 +122,12 @@ const PentRoof = ({ width: floorWidth, depth: floorDepth, opacity = 1, showFrami
           const yFront = (cornerHeights.frontLeft ?? 70) + t * ((cornerHeights.frontRight ?? 70) - (cornerHeights.frontLeft ?? 70));
           const yBack = (cornerHeights.backLeft ?? 70) + t * ((cornerHeights.backRight ?? 70) - (cornerHeights.backLeft ?? 70));
           const yBearing = (yFront + yBack) / 2;
-          const len = Math.sqrt((2 * halfD) ** 2 + (yBack - yFront) ** 2);
+          const len = Math.sqrt((2 * halfD) ** 2 + (yBack - yFront) ** 2) - 2 * END_CLEARANCE;
           const angle = Math.atan2(yBack - yFront, 2 * halfD);
-          const belowBearing = normal.clone().multiplyScalar(ROOF_THICKNESS / 2 + RAFTER_W / 2);
+          const belowBearing = normal.clone().multiplyScalar(RAFTER_W / 2 + Z_FIGHT_EPSILON);
           const pos = new THREE.Vector3(x, yBearing, 0).sub(belowBearing);
           rafters.push(
-            <mesh key={i} position={[pos.x, pos.y, pos.z]} rotation={[-angle, 0, 0]} castShadow>
+            <mesh key={i} position={[pos.x, pos.y, pos.z]} rotation={[-angle, 0, Math.PI]} castShadow>
               <boxGeometry args={[RAFTER_T, RAFTER_W, len]} />
               {rafterMat}
             </mesh>
