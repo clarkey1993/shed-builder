@@ -1,6 +1,6 @@
 # Shed Configurator – AI Agent Rules
 
-This project is a 3D Bramwood shed configurator. Follow these rules to work efficiently and avoid unnecessary changes.
+This project is a 3D Bramwood shed configurator with a separate builder drawing / export layer. Follow these rules to work efficiently and avoid unnecessary changes.
 
 ---
 
@@ -8,6 +8,7 @@ This project is a 3D Bramwood shed configurator. Follow these rules to work effi
 
 - 3D Bramwood shed configurator for designing shed structure only
 - Covers: shed size, roof type, wall-by-wall openings, internal partitions, framing visualization, cladding, roof
+- Includes a separate builder drawing / export system for plans, elevations, roof sheets, floor sheets, schedules, and later cut / materials data
 - **Not** an interior furnishing planner unless explicitly requested
 - No furniture, shelves, or workbenches
 
@@ -22,19 +23,30 @@ Before making changes, read:
 - `docs/BUILD_RULES.md`
 - `docs/DEVELOPMENT_GUIDELINES.md`
 
+If the task involves builder sheets, floor plans, wall sheets, roof sheets, schedules, or export/build-data logic, also read:
+
+- `src/config/builderRules.js`
+
 ---
 
 ## 3. Protected Systems
 
 Do **not** modify unless explicitly requested:
 
-- ConfiguratorContext core dimension logic
-- shedData.json structure
+- ConfiguratorContext core interaction flow
 - builderStep workflow
 - Existing window drag behavior
 - Existing door drag behavior
 - Camera control behavior
+- Live rendering chain
+
+Handle with care and modify only if the task clearly requires a Bramwood rule correction:
+
+- ConfiguratorContext core dimension logic
+- `shedData.json` structure
 - Core shed dimension math
+
+If a real-world sizing mismatch is found, prefer adding or updating shared Bramwood rule helpers before patching UI display code.
 
 ---
 
@@ -55,6 +67,8 @@ Do **not** modify unless explicitly requested:
 | Cladding | Horizontal shiplap |
 | Board width | 5" |
 | Visible coverage | ~4" |
+
+These defaults are not enough by themselves for builder sheets. For builder output, prefer explicit Bramwood rule tables and lookup data.
 
 ---
 
@@ -93,12 +107,25 @@ Do **not** modify unless explicitly requested:
 - Prefer shared helpers over hardcoded dimensions
 - Prioritize stability
 
+For builder drawing and export work:
+- Prefer deterministic Bramwood rule helpers over visual approximation
+- Prefer lookup tables over inferred geometry when the drawings define explicit sizes
+- Keep builder logic in shared helper/config files, not buried in UI components
+- Keep nominal size and actual build size clearly separated
+- Do not force builder output to reuse the live 3D display logic if that creates incorrect real-world values
+
 ---
 
 ## 9. Documentation Behavior
 
 - Update the docs folder if architecture changes significantly
 - Do not document features that are not in the code
+- If Bramwood construction logic changes, update:
+  - `docs/BUILD_RULES.md`
+  - `src/config/builderRules.js`
+- If system ownership changes, update:
+  - `docs/SYSTEM_MAP.md`
+  - `docs/PROJECT_ARCHITECTURE.md`
 
 ---
 
@@ -110,3 +137,141 @@ Do **not** modify unless explicitly requested:
 4. Improve realism
 5. Improve framing accuracy
 6. Improve maintainability
+7. Build a correct builder drawing / export system from Bramwood rules
+
+---
+
+## 11. Critical System Separation
+
+This project has **two related but separate systems**.
+
+### A. Configurator System (interactive / 3D)
+
+Purpose:
+- user chooses nominal shed size
+- roof type
+- openings
+- partitions
+- framing display
+- interactive 3D visualization
+
+Typical sources:
+- `ConfiguratorContext`
+- `shedData.json`
+- render geometry
+- wall / roof components
+
+This system is optimized for:
+- interactivity
+- rendering
+- UI flow
+- placement behavior
+
+### B. Builder Output System (deterministic / drawing / export)
+
+Purpose:
+- produce floor/base sheets
+- wall elevation sheets
+- apex stud/upright sizes
+- roof drawings
+- schedules
+- later cut/material data
+
+Typical sources:
+- `src/config/builderRules.js`
+- explicit Bramwood lookup tables
+- build-data helpers
+- drawing/export helpers
+
+This system is optimized for:
+- real-world construction accuracy
+- repeatability
+- explicit sizes from Bramwood drawings
+- printable builder output
+
+**Critical rule:**
+Builder outputs must **not** be derived from rendered geometry when Bramwood drawings or lookup rules define the sizes explicitly.
+
+If there is a mismatch between:
+- visual/render-derived geometry
+and
+- Bramwood builder rules
+
+then:
+- builder rules are the source of truth for builder sheets
+- visual geometry is secondary unless explicitly being corrected
+
+---
+
+## 12. Builder Output Rules
+
+When working on:
+- floor plans
+- base plans
+- wall sheets
+- elevations
+- roof sheets
+- schedules
+- builder packs
+- export/build-data helpers
+
+follow these rules:
+
+- Use `src/config/builderRules.js` as the primary source of builder logic
+- Do not guess construction sizes from wall meshes or rendered outlines
+- Do not assume nominal size equals actual build size
+- Distinguish clearly between:
+  - nominal product size
+  - actual built size
+  - drawing/export dimensions
+- Prefer lookup tables where Bramwood drawings provide explicit values
+- It is acceptable for builder sheets to differ from the raw 3D visual approximation if the Bramwood rules require it
+- Add new shared helpers rather than hardcoding values inside preview components
+- Keep builder data pure and derivable without Three.js scene access
+
+---
+
+## 13. File Ownership Guidance
+
+Use these as the preferred homes for logic:
+
+### Interactive / 3D logic
+- `src/context/ConfiguratorContext.jsx`
+- `src/components/shed/...`
+- `src/context/BuilderContext.jsx`
+
+### General preset / lookup data already used by configurator
+- `src/shedData.json`
+
+### Builder-specific real-world construction logic
+- `src/config/builderRules.js`
+
+### Builder-derived data / sheets / export helpers
+- `src/lib/buildData/...`
+
+### UI preview / rendering of builder pages
+- `src/components/ui/...`
+
+Do not bury Bramwood construction tables directly inside UI components unless explicitly requested for a very small temporary pass.
+
+---
+
+## 14. Safe Change Strategy for AI Agents
+
+When a task involves real-world Bramwood sizing:
+
+1. Check whether the value belongs to the configurator system or the builder output system
+2. If it is builder output logic, prefer `builderRules.js` or shared build-data helpers
+3. Only patch UI labels after confirming the underlying rule source is correct
+4. Do not “make the display look right” by faking numbers if the rule source is wrong
+5. If uncertain, preserve current interaction/render behavior and add a new builder-specific rule/helper instead of altering the live 3D system
+
+---
+
+## 15. What Not To Do
+
+- Do not derive floor framing directly from wall outline geometry if Bramwood floor sheets define a separate rule
+- Do not derive apex upright heights from generic roof slope math if Bramwood drawings define explicit per-size values
+- Do not collapse nominal and actual dimensions into one field
+- Do not patch incorrect builder outputs only in the preview layer
+- Do not redesign the whole architecture when a shared rules/helper layer will solve the problem

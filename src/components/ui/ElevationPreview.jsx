@@ -13,7 +13,8 @@ function SingleElevation({ elevation }) {
   const dimOff = 14;
   const leftPad = dimOff + 8;
   const rightPad = dimOff + 12;
-  const bottomPad = dimOff + 6;
+  const leaderArea = (uprights ?? []).length > 0 ? 22 : 0;
+  const bottomPad = dimOff + 6 + leaderArea;
   const topPad = 8;
 
   const totalH = roofH + topPad + bottomPad;
@@ -64,19 +65,47 @@ function SingleElevation({ elevation }) {
             strokeLinejoin="round"
           />
         )}
-        {/* Apex uprights at 2ft centres (lines only; sizes in schedule below) */}
-        {(uprights ?? []).map((u, i) => (
-          <line
-            key={`upright-${i}`}
-            x1={bodyLeft + u.x}
-            y1={toSvgY(0)}
-            x2={bodyLeft + u.x}
-            y2={toSvgY(u.heightInches)}
-            stroke="#6b7280"
-            strokeWidth={strokeThin}
-            opacity={0.85}
-          />
-        ))}
+        {/* Apex uprights at 2ft centres with leader-line callouts */}
+        {(uprights ?? []).map((u, i) => {
+          const s = uprightSchedule?.[i];
+          const labelText = s?.displayLabel ?? `${u.heightInches}"`;
+          const leaderDrop = 12;
+          const labelY = -16;
+          const topY = u.heightInches;
+          return (
+            <g key={`upright-${i}`}>
+              <line
+                x1={bodyLeft + u.x}
+                y1={toSvgY(0)}
+                x2={bodyLeft + u.x}
+                y2={toSvgY(topY)}
+                stroke="#6b7280"
+                strokeWidth={strokeThin}
+                opacity={0.85}
+              />
+              <line
+                x1={bodyLeft + u.x}
+                y1={toSvgY(topY)}
+                x2={bodyLeft + u.x}
+                y2={toSvgY(-leaderDrop)}
+                stroke="#6b7280"
+                strokeWidth={strokeThin * 0.9}
+                opacity={0.75}
+              />
+              <text
+                x={bodyLeft + u.x}
+                y={toSvgY(labelY)}
+                textAnchor="middle"
+                dominantBaseline="hanging"
+                fill="#374151"
+                fontSize={fontSize - 1}
+                fontFamily="ui-sans-serif, system-ui, sans-serif"
+              >
+                {labelText}
+              </text>
+            </g>
+          );
+        })}
         {/* Openings */}
         {openings?.map((o) => (
           <rect
@@ -140,21 +169,6 @@ function SingleElevation({ elevation }) {
           );
         })}
       </svg>
-      {/* Upright size schedule (apex only) */}
-      {uprightSchedule && uprightSchedule.length > 0 && (
-        <div className="mt-1.5 px-1 py-1.5 bg-gray-50 rounded border border-gray-200">
-          <div className="text-[9px] font-medium text-gray-500 uppercase tracking-wide mb-1">
-            Uprights
-          </div>
-          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] font-mono text-gray-700">
-            {uprightSchedule.map((s) => (
-              <span key={s.id}>
-                {s.id} — {s.displayLabel}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

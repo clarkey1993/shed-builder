@@ -1,75 +1,57 @@
 /**
  * Floor/base plan generation from build model only (no meshes, scene, or Three.js).
- * Bramwood-style floor drawing: outline, side rails, internal joists.
- * Derives floor sizes from Bramwood floor table (floor_widths_inches, nominal depth × 12).
- * A members = 2×1 perimeter rails; B members = 2×2 internal joists as required.
+ * Uses builderRules.js as source of truth for Bramwood floor sizes.
+ * A = 2×1 upright (perimeter); B = 2×2 as required (internal joists).
  */
-import shedData from "../../shedData.json";
 import { formatFeet, formatInchesToFeetInches } from "./formatUnits";
+import {
+  getFloorActualWidth,
+  getFloorActualDepth,
+  getFloorGroupALength,
+  getFloorGroupBLength,
+  getCentresAcrossWidth,
+} from "../../config/builderRules";
 
 const DIM_OFFSET = 14;
 const MIN_SPAN_FOR_DIMS = 20;
-
-// --- Bramwood floor sizing rules (from shedData; fallbacks if JSON incomplete) ---
-// A members: 2×1 uprights (upright_ends_thickness: 2×1) - perimeter rails
-// B members: 2×2 (upright_middles_thickness: 2×2) - internal joists
-// Joist spacing: framing.spacing_ft × 12 (e.g. 2 → 24")
-const JOIST_SPACING = (shedData.framing?.spacing_ft ?? 2) * 12;
+const JOIST_SPACING = 24;
 
 /**
- * Get actual floor dimensions from Bramwood rules.
- * @param {number} nominalWidthFeet - Nominal width in feet (e.g. 8)
- * @param {number} nominalDepthFeet - Nominal depth in feet (e.g. 6)
- * @returns {{ actualFloorWidth: number, actualFloorDepth: number }}
+ * Derive floor A and B member groups from builderRules.js.
+ * A lengths from group A (width and depth nominals).
+ * B length from group B (nominal of span axis); count from 2ft centres.
  */
-function getBramwoodFloorDimensions(nominalWidthFeet, nominalDepthFeet) {
-  const fw = shedData.floor_widths_inches ?? {};
-  const actualFloorWidth =
-    fw[String(nominalWidthFeet)] ?? nominalWidthFeet * 12;
-  const actualFloorDepth = (nominalDepthFeet || 1) * 12;
-  return { actualFloorWidth, actualFloorDepth };
-}
+function deriveFloorMemberGroups(nominalWidthFeet, nominalDepthFeet, actualFloorWidth, actualFloorDepth) {
+  const aLong = getFloorGroupALength(nominalWidthFeet);
+  const aShort = getFloorGroupALength(nominalDepthFeet);
+  const longAxis = Math.max(actualFloorWidth, actualFloorDepth);
+  const shortAxis = Math.min(actualFloorWidth, actualFloorDepth);
+  const spanNominal = actualFloorWidth >= actualFloorDepth ? nominalDepthFeet : nominalWidthFeet;
+  const bLength = getFloorGroupBLength(spanNominal);
+  const bPositions = getCentresAcrossWidth(longAxis, JOIST_SPACING);
+  const bCount = Math.max(2, bPositions.length - 2);
 
-/**
- * Derive Bramwood A and B member groups for a floor module.
- * A = 2×1 perimeter rails (2 long + 2 short)
- * B = 2×2 internal joists spanning short dimension, spaced at JOIST_SPACING
- * @param {number} actualFloorWidth - Floor width in inches
- * @param {number} actualFloorDepth - Floor depth in inches
- * @returns {{ memberGroupA: object, memberGroupB: object }}
- */
-function deriveBramwoodMemberGroups(actualFloorWidth, actualFloorDepth) {
-  const long = Math.max(actualFloorWidth, actualFloorDepth);
-  const short = Math.min(actualFloorWidth, actualFloorDepth);
-
-  // A members: 2×1 perimeter rails (2 long, 2 short)
   const memberGroupA = {
-    spec: "2×1",
-    description: "2×1 perimeter rails",
-    longLengthInches: long,
-    shortLengthInches: short,
+    spec: "2x1",
+    description: "upright",
+    longLengthInches: aLong,
+    shortLengthInches: aShort,
     countLong: 2,
     countShort: 2,
   };
 
-  // B members: 2×2 joists spanning short dimension, spaced along long dimension
-  const spanAxis = long;
-  const joistCount = Math.max(2, Math.floor(spanAxis / JOIST_SPACING) + 1);
   const memberGroupB = {
-    spec: "2×2",
-    description: "2×2 joists",
-    lengthInches: short,
-    count: joistCount,
+    spec: "2x2",
+    description: "as required",
+    lengthInches: bLength,
+    count: bCount,
   };
 
   return { memberGroupA, memberGroupB };
 }
 
 /**
- * Build display-friendly member schedule for Bramwood floor sheet.
- * @param {Object} memberGroupA - From deriveBramwoodMemberGroups
- * @param {Object} memberGroupB - From deriveBramwoodMemberGroups
- * @returns {Object} { groupA, groupB } with formatted display strings
+ * Build display-friendly member schedule (builder-style, inches).
  */
 function buildMemberSchedule(memberGroupA, memberGroupB) {
   const aItems = [];
@@ -77,19 +59,19 @@ function buildMemberSchedule(memberGroupA, memberGroupB) {
     aItems.push({
       qty: memberGroupA.countLong,
       lengthInches: memberGroupA.longLengthInches,
-      formatted: `${memberGroupA.countLong} @ ${formatInchesToFeetInches(memberGroupA.longLengthInches)}`,
+      formatted: `${memberGroupA.countLong} @ ${memberGroupA.longLengthInches}in`,
     });
   }
   if (memberGroupA.countShort > 0 && memberGroupA.shortLengthInches != null) {
     const existing = aItems.find((i) => i.lengthInches === memberGroupA.shortLengthInches);
     if (existing) {
       existing.qty += memberGroupA.countShort;
-      existing.formatted = `${existing.qty} @ ${formatInchesToFeetInches(existing.lengthInches)}`;
+      existing.formatted = `${existing.qty} @ ${existing.lengthInches}in`;
     } else {
       aItems.push({
         qty: memberGroupA.countShort,
         lengthInches: memberGroupA.shortLengthInches,
-        formatted: `${memberGroupA.countShort} @ ${formatInchesToFeetInches(memberGroupA.shortLengthInches)}`,
+        formatted: `${memberGroupA.countShort} @ ${memberGroupA.shortLengthInches}in`,
       });
     }
   }
@@ -97,7 +79,7 @@ function buildMemberSchedule(memberGroupA, memberGroupB) {
   const groupA = {
     label: "A",
     spec: memberGroupA.spec,
-    description: "Perimeter rails",
+    description: memberGroupA.description,
     items: aItems,
     summary: aItems.map((i) => i.formatted).join(", "),
   };
@@ -105,15 +87,15 @@ function buildMemberSchedule(memberGroupA, memberGroupB) {
   const groupB = {
     label: "B",
     spec: memberGroupB.spec,
-    description: "Joists",
+    description: memberGroupB.description,
     items: [
       {
         qty: memberGroupB.count,
         lengthInches: memberGroupB.lengthInches,
-        formatted: `${memberGroupB.count} @ ${formatInchesToFeetInches(memberGroupB.lengthInches)}`,
+        formatted: `${memberGroupB.count} @ ${memberGroupB.lengthInches}in`,
       },
     ],
-    summary: `${memberGroupB.count} @ ${formatInchesToFeetInches(memberGroupB.lengthInches)}`,
+    summary: `${memberGroupB.count} @ ${memberGroupB.lengthInches}in`,
   };
 
   return { groupA, groupB };
@@ -130,10 +112,11 @@ export function getFloorPlan(buildModel) {
     const nominalW = mod.nominalWidthFeet ?? Math.round((mod.width ?? 0) / 12);
     const nominalD = mod.nominalDepthFeet ?? Math.round((mod.depth ?? 0) / 12);
 
-    // Derive from Bramwood rules (not wall outlines or guessed values)
-    const { actualFloorWidth, actualFloorDepth } =
-      getBramwoodFloorDimensions(nominalW, nominalD);
-    const { memberGroupA, memberGroupB } = deriveBramwoodMemberGroups(
+    const actualFloorWidth = getFloorActualWidth(nominalW);
+    const actualFloorDepth = getFloorActualDepth(nominalD);
+    const { memberGroupA, memberGroupB } = deriveFloorMemberGroups(
+      nominalW,
+      nominalD,
       actualFloorWidth,
       actualFloorDepth
     );
@@ -183,10 +166,8 @@ export function getFloorPlan(buildModel) {
 }
 
 /**
- * Bramwood-style floor member layout.
- * - sideMembers: perimeter rails (A members, 2×1) - the outer frame.
- * - internalMembers: joists (B members, 2×2) spanning the shorter dimension, spaced at JOIST_SPACING.
- * Joists span the short dimension for structural efficiency and are spaced along the long dimension.
+ * Floor member layout from builderRules (2ft centres).
+ * Side members = A perimeter; internal = B joists at 24" centres.
  */
 function buildFloorMemberGroups(floorWidth, floorDepth, baseX, baseZ) {
   const sideMembers = [
@@ -208,18 +189,13 @@ function buildFloorMemberGroups(floorWidth, floorDepth, baseX, baseZ) {
     },
   ];
 
-  const internalMembers = [];
-  // Joists span the short dimension; spaced along the long dimension at JOIST_SPACING
   const longAxis = Math.max(floorWidth, floorDepth);
-  const numJoists = Math.max(2, Math.floor(longAxis / JOIST_SPACING) + 1);
+  const positions = getCentresAcrossWidth(longAxis, JOIST_SPACING);
+  const internalMembers = [];
 
-  // When width >= depth: joists run along Z (vertical in plan), spaced along X
-  // When width < depth: joists run along X (horizontal in plan), spaced along Z
   if (floorWidth >= floorDepth) {
-    for (let i = 1; i < numJoists; i++) {
-      const localX = i * JOIST_SPACING;
-      if (localX >= floorWidth) break;
-      const x = baseX + localX;
+    for (let i = 1; i < positions.length - 1; i++) {
+      const x = baseX + positions[i];
       internalMembers.push({
         type: "internal",
         x1: x,
@@ -229,10 +205,8 @@ function buildFloorMemberGroups(floorWidth, floorDepth, baseX, baseZ) {
       });
     }
   } else {
-    for (let i = 1; i < numJoists; i++) {
-      const localZ = i * JOIST_SPACING;
-      if (localZ >= floorDepth) break;
-      const z = baseZ + localZ;
+    for (let i = 1; i < positions.length - 1; i++) {
+      const z = baseZ + positions[i];
       internalMembers.push({
         type: "internal",
         x1: baseX,

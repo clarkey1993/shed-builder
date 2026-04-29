@@ -196,7 +196,7 @@ export default function FloorPlanPreview({ floorPlan }) {
         </svg>
       </div>
 
-      {/* 2. Floor member schedule (main output) */}
+      {/* 2. Floor member schedule (builder-style) */}
       {modules.some((m) => m.memberSchedule) && (
         <div className="mt-3 border border-gray-200 rounded bg-white">
           <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
@@ -208,21 +208,24 @@ export default function FloorPlanPreview({ floorPlan }) {
             {modules.map((m) => {
               const schedule = m.memberSchedule;
               if (!schedule) return null;
+              const actualSize = m.actualFloorWidth != null && m.actualFloorDepth != null
+                ? `${m.actualFloorWidth}in × ${m.actualFloorDepth}in`
+                : null;
               return (
                 <div key={m.moduleId} className={modules.length > 1 ? "border-b border-gray-100 last:border-0 pb-4 last:pb-0" : ""}>
                   {modules.length > 1 && (
                     <div className="text-[10px] font-medium text-gray-500 mb-2">{m.moduleId}</div>
+                  )}
+                  {actualSize && (
+                    <div className="text-[10px] text-gray-500 mb-2">Actual: {actualSize}</div>
                   )}
                   {/* A */}
                   <div>
                     <div className="flex items-baseline gap-2">
                       <span className="text-sm font-semibold text-gray-800">{schedule.groupA.label}</span>
                       <span className="text-xs text-gray-600">
-                        {schedule.groupA.spec} {schedule.groupA.description}
+                        {schedule.groupA.spec} {schedule.groupA.description} — {schedule.groupA.summary}
                       </span>
-                    </div>
-                    <div className="mt-1 text-xs font-mono text-gray-700">
-                      {schedule.groupA.summary}
                     </div>
                   </div>
                   {/* B */}
@@ -230,11 +233,8 @@ export default function FloorPlanPreview({ floorPlan }) {
                     <div className="flex items-baseline gap-2">
                       <span className="text-sm font-semibold text-gray-800">{schedule.groupB.label}</span>
                       <span className="text-xs text-gray-600">
-                        {schedule.groupB.spec} {schedule.groupB.description}
+                        {schedule.groupB.spec} {schedule.groupB.description} — {schedule.groupB.summary}
                       </span>
-                    </div>
-                    <div className="mt-1 text-xs font-mono text-gray-700">
-                      {schedule.groupB.summary}
                     </div>
                   </div>
                 </div>
